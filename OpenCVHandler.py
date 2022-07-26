@@ -20,7 +20,6 @@
 """
 
 import logging
-import math
 import threading
 import time
 
@@ -36,7 +35,6 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication
 from cv2 import aruco
 
-import Marker
 import winguiauto
 
 PREVIEW_OUTPUT = 0
@@ -349,7 +347,7 @@ class OpenCVHandler:
                 # Grab the current camera frame
                 try:
                     if self.camera_capture_allowed and self.video_capture.isOpened():
-                        if self.fake_mode == FAKE_MODE_FLICKER:
+                        if self.fake_mode == FAKE_MODE_FLICKER and self.fake_screen:
                             # Count flicker frames
                             self.flick_counter += 1
 
@@ -414,147 +412,138 @@ class OpenCVHandler:
                 if not self.fake_screen or error:
                     allow_fake_screen = False
 
-                if self.fake_screen and self.fake_mode == FAKE_MODE_ARUCO:
-                    if allow_fake_screen:
-                        try:
-                            # Convert input camera image to gray
-                            input_gray = cv2.cvtColor(self.input_frame, cv2.COLOR_BGR2GRAY)
+                # Convert input camera image to gray
+                input_gray = cv2.cvtColor(self.input_frame, cv2.COLOR_BGR2GRAY)
 
-                            # Invert frame if needed
-                            if self.aruco_invert:
-                                gray_for_aruco = cv2.bitwise_not(input_gray)
-                            else:
-                                gray_for_aruco = input_gray
+                # Invert frame if needed
+                if self.aruco_invert:
+                    gray_for_aruco = cv2.bitwise_not(input_gray)
+                else:
+                    gray_for_aruco = input_gray
 
-                            # Find aruco markers
-                            corners, ids, _ = aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
-                                                                  parameters=self.parameters)
-                            # corners, ids, _ = aruco.detectMarkers(image=input_gray, dictionary=self.aruco_dict,
-                            #                                             parameters=self.parameters,
-                            #                                             cameraMatrix=self.CAMERA_MATRIX,
-                            #                                             distCoeff=self.CAMERA_DISTORTION)
-                            if np.all(ids is not None):
-                                # Check number of markers
-                                if ids.size == 4:
-                                    # Convert ids to list
-                                    ids_list = ids.reshape((len(ids))).tolist()
+                # Find aruco markers
+                corners, ids, _ = aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
+                                                      parameters=self.parameters)
+                # corners, ids, _ = aruco.detectMarkers(image=input_gray, dictionary=self.aruco_dict,
+                #                                             parameters=self.parameters,
+                #                                             cameraMatrix=self.CAMERA_MATRIX,
+                #                                             distCoeff=self.CAMERA_DISTORTION)
 
-                                    # Check all IDs
-                                    markers_in_list = True
-                                    for marker_id in self.marker_ids:
-                                        if marker_id not in ids_list:
-                                            markers_in_list = False
-                                            break
+                if self.fake_screen and self.fake_mode == FAKE_MODE_ARUCO and allow_fake_screen:
+                    if np.all(ids is not None):
+                        # Check number of markers
+                        if ids.size == 4:
+                            # Convert ids to list
+                            ids_list = ids.reshape((len(ids))).tolist()
 
-                                    if markers_in_list:
+                            # Check all IDs
+                            markers_in_list = True
+                            for marker_id in self.marker_ids:
+                                if marker_id not in ids_list:
+                                    markers_in_list = False
+                                    break
 
-                                        # Get markers corners
-                                        marker_tl = corners[ids_list.index(0)][0]
-                                        marker_tr = corners[ids_list.index(1)][0]
-                                        marker_br = corners[ids_list.index(2)][0]
-                                        marker_bl = corners[ids_list.index(3)][0]
+                            if markers_in_list:
 
-                                        # Calculate final screen coordinates
-                                        # tl = self.get_marker_point(marker_tl, Marker.POSITION_TOP_LEFT)
-                                        # tr = self.get_marker_point(marker_tr, Marker.POSITION_TOP_RIGHT)
-                                        # br = self.get_marker_point(marker_br, Marker.POSITION_BOTTOM_RIGHT)
-                                        # bl = self.get_marker_point(marker_bl, Marker.POSITION_BOTTOM_LEFT)
-                                        tl = marker_tl[0]
-                                        tr = marker_tr[1]
-                                        br = marker_br[2]
-                                        bl = marker_bl[3]
+                                # Get markers corners
+                                marker_tl = corners[ids_list.index(0)][0]
+                                marker_tr = corners[ids_list.index(1)][0]
+                                marker_br = corners[ids_list.index(2)][0]
+                                marker_bl = corners[ids_list.index(3)][0]
 
-                                        # Dimensions of the frames
-                                        overlay_height = window_image.shape[0]
-                                        overlay_width = window_image.shape[1]
-                                        source_height = self.input_frame.shape[0]
-                                        source_width = self.input_frame.shape[1]
+                                # Calculate final screen coordinates
+                                # tl = self.get_marker_point(marker_tl, Marker.POSITION_TOP_LEFT)
+                                # tr = self.get_marker_point(marker_tr, Marker.POSITION_TOP_RIGHT)
+                                # br = self.get_marker_point(marker_br, Marker.POSITION_BOTTOM_RIGHT)
+                                # bl = self.get_marker_point(marker_bl, Marker.POSITION_BOTTOM_LEFT)
+                                tl = marker_tl[0]
+                                tr = marker_tr[1]
+                                br = marker_br[2]
+                                bl = marker_bl[3]
 
-                                        # Apply brightness gradient to image
-                                        window_image = self.calculate_and_apply_brightness_gradient(marker_tl,
-                                                                                                    marker_tr,
-                                                                                                    marker_br,
-                                                                                                    marker_bl,
-                                                                                                    input_gray,
-                                                                                                    window_image)
+                                # Dimensions of the frames
+                                overlay_height = window_image.shape[0]
+                                overlay_width = window_image.shape[1]
+                                source_height = self.input_frame.shape[0]
+                                source_width = self.input_frame.shape[1]
 
-                                        # Source points (full size of overlay image)
-                                        points_src = np.array([
-                                            [0, 0],
-                                            [overlay_width - 1, 0],
-                                            [overlay_width - 1, overlay_height - 1],
-                                            [0, overlay_height - 1]], dtype='float32')
+                                # Apply brightness gradient to image
+                                window_image = self.calculate_and_apply_brightness_gradient(marker_tl, marker_tr,
+                                                                                            marker_br, marker_bl,
+                                                                                            input_gray, window_image)
 
-                                        # Destination points (projection)
-                                        points_dst = np.array([tl, tr, br, bl], dtype='float32')
+                                # Source points (full size of overlay image)
+                                points_src = np.array([
+                                    [0, 0],
+                                    [overlay_width - 1, 0],
+                                    [overlay_width - 1, overlay_height - 1],
+                                    [0, overlay_height - 1]], dtype='float32')
 
-                                        # Stretch window
-                                        center_x, center_y = get_center(points_dst)
-                                        for i in range(len(points_dst)):
-                                            points_dst[i][0] = self.stretch_scale_x \
-                                                               * (points_dst[i][0] - center_x) + center_x
-                                            points_dst[i][1] = self.stretch_scale_y \
-                                                               * (points_dst[i][1] - center_y) + center_y
+                                # Destination points (projection)
+                                points_dst = np.array([tl, tr, br, bl], dtype='float32')
 
-                                        # Warp and transform window image
-                                        window_matrix = cv2.getPerspectiveTransform(points_src, points_dst)
-                                        window_warp = cv2.warpPerspective(window_image, window_matrix,
-                                                                          (source_width, source_height))
+                                # Stretch window
+                                center_x, center_y = get_center(points_dst)
+                                for i in range(len(points_dst)):
+                                    points_dst[i][0] = self.stretch_scale_x * (points_dst[i][0] - center_x) + center_x
+                                    points_dst[i][1] = self.stretch_scale_y * (points_dst[i][1] - center_y) + center_y
 
-                                        # Cut black region from destination_frame
-                                        contours = np.array([points_dst], dtype=int)
-                                        cv2.drawContours(output_frame, [contours], -1, 0, -1)
+                                # Warp and transform window image
+                                window_matrix = cv2.getPerspectiveTransform(points_src, points_dst)
+                                window_warp = cv2.warpPerspective(window_image, window_matrix,
+                                                                  (source_width, source_height))
 
-                                        # Combine images
-                                        output_frame = cv2.bitwise_or(output_frame, window_warp)
+                                # Cut black region from destination_frame
+                                contours = np.array([points_dst], dtype=int)
+                                cv2.drawContours(output_frame, [contours], -1, 0, -1)
 
-                                        # Blur contour of screen
-                                        # TODO: Make faster
-                                        """
-                                        output_blurred = cv2.GaussianBlur(output_frame, (5, 5), 0)
-                                        mask = np.zeros(output_frame.shape, np.uint8)
+                                # Combine images
+                                output_frame = cv2.bitwise_or(output_frame, window_warp)
 
-                                        center_x, center_y = get_center(points_dst)
-                                        for i in range(len(points_dst)):
-                                            contours[0][i][0] = 0.992 * (contours[0][i][0] - center_x) + center_x
-                                            contours[0][i][1] = 0.992 * (contours[0][i][1] - center_y) + center_y
+                                # Blur contour of screen
+                                # TODO: Make faster
+                                """
+                                output_blurred = cv2.GaussianBlur(output_frame, (5, 5), 0)
+                                mask = np.zeros(output_frame.shape, np.uint8)
 
-                                        cv2.drawContours(mask, [contours], -1, (255, 255, 255), 4)
+                                center_x, center_y = get_center(points_dst)
+                                for i in range(len(points_dst)):
+                                    contours[0][i][0] = 0.992 * (contours[0][i][0] - center_x) + center_x
+                                    contours[0][i][1] = 0.992 * (contours[0][i][1] - center_y) + center_y
 
-                                        output_frame = np.where(mask == np.array([255, 255, 255]),
-                                                                output_blurred, output_frame)
-                                        """
+                                cv2.drawContours(mask, [contours], -1, (255, 255, 255), 4)
 
-                                    # Not all IDs detected
-                                    else:
-                                        error = True
-                                        logging.error("Not all markers detected!")
+                                output_frame = np.where(mask == np.array([255, 255, 255]),
+                                                        output_blurred, output_frame)
+                                """
 
-                                # Detected != 4 markers
-                                else:
-                                    error = True
-                                    if ids.size > 4:
-                                        logging.error("Detected more than 4 markers!")
-                                    else:
-                                        logging.error("Detected less than 4 markers!")
-
-                            # No markers detected
+                            # Not all IDs detected
                             else:
                                 error = True
-                                logging.error("No ARUco detected!")
+                                logging.error("Not all markers detected!")
 
-                        # Error while faking screen
-                        except Exception as e:
+                        # Detected != 4 markers
+                        else:
                             error = True
-                            logging.exception(e)
+                            if ids.size > 4:
+                                logging.error("Detected more than 4 markers!")
+                            else:
+                                logging.error("Detected less than 4 markers!")
 
-                    # Fake screen enabled and not allow_fake_screen
-                    elif self.video_capture is not None and self.video_capture.isOpened():
-                        logging.warning("Fake screen enabled but someting is wrong...")
+                    # No markers detected
+                    else:
+                        error = True
+                        logging.error("No ARUco detected!")
 
                 # Fake aruco disabled
                 else:
+                    # Just copy input frame
                     output_frame = self.input_frame.copy()
+
+                    # Detected at least 1 marker
+                    if np.all(ids is not None):
+                        error = True
+                        logging.error("ARUco was found but should not have been!")
 
                 # Resize output
                 output_frame = cv2.resize(output_frame, (self.output_width, self.output_height))
@@ -622,7 +611,7 @@ class OpenCVHandler:
                 # Convert to ms
                 # cycle_time = ((time.time() - time_started) * 1000)
 
-            # Unknown error
+            # OpenCV loop error
             except Exception as e:
                 logging.exception(e)
 
@@ -633,72 +622,74 @@ class OpenCVHandler:
     def calculate_and_apply_brightness_gradient(self, marker_tl, marker_tr, marker_br, marker_bl, input_gray,
                                                 window_image):
 
-        # WARP ARUCO
+        # Calculate max white value
+        # Top left
+        aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
+        cv2.drawContours(aruco_mask, [np.array([marker_tl], dtype=int)], -1, (255, 255, 255), -1)
+        masked = cv2.bitwise_and(input_gray, aruco_mask)
+        max_white_tl = int(masked.max())
 
-        aruco_points_dst = np.array([[0, 0], [0, self.aruco_size], [self.aruco_size, self.aruco_size],
-                                     [self.aruco_size, 0]], dtype="float32")
+        # Top right
+        aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
+        cv2.drawContours(aruco_mask, [np.array([marker_tr], dtype=int)], -1, (255, 255, 255), -1)
+        masked = cv2.bitwise_and(input_gray, aruco_mask)
+        max_white_tr = int(masked.max())
 
-        aruco_tl_matrix = cv2.getPerspectiveTransform(marker_tl, aruco_points_dst)
-        aruco_tr_matrix = cv2.getPerspectiveTransform(marker_tr, aruco_points_dst)
-        aruco_br_matrix = cv2.getPerspectiveTransform(marker_br, aruco_points_dst)
-        aruco_bl_matrix = cv2.getPerspectiveTransform(marker_bl, aruco_points_dst)
+        # Bottom right
+        aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
+        cv2.drawContours(aruco_mask, [np.array([marker_br], dtype=int)], -1, (255, 255, 255), -1)
+        masked = cv2.bitwise_and(input_gray, aruco_mask)
+        max_white_br = int(masked.max())
 
-        max_white_tl = int(cv2.warpPerspective(input_gray, aruco_tl_matrix,
-                                               (self.aruco_size, self.aruco_size)).max())
-        max_white_tr = int(cv2.warpPerspective(input_gray, aruco_tr_matrix,
-                                               (self.aruco_size, self.aruco_size)).max())
-        max_white_br = int(cv2.warpPerspective(input_gray, aruco_br_matrix,
-                                               (self.aruco_size, self.aruco_size)).max())
-        max_white_bl = int(cv2.warpPerspective(input_gray, aruco_bl_matrix,
-                                               (self.aruco_size, self.aruco_size)).max())
+        # Bottom left
+        aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
+        cv2.drawContours(aruco_mask, [np.array([marker_bl], dtype=int)], -1, (255, 255, 255), -1)
+        masked = cv2.bitwise_and(input_gray, aruco_mask)
+        max_white_bl = int(masked.max())
 
+        # Calculate average white values
         white_left = (max_white_tl + max_white_bl) // 2
-        white_right = (max_white_tr + max_white_br) // 2
-
         white_top = (max_white_tl + max_white_tr) // 2
+        white_right = (max_white_tr + max_white_br) // 2
         white_bottom = (max_white_bl + max_white_br) // 2
 
+        # Create horizontal gradient
         if white_left > white_right:
             horizontal_brightness_gradient = list(range(white_right, white_left + 1))
             horizontal_brightness_gradient.reverse()
         else:
             horizontal_brightness_gradient = list(range(white_left, white_right + 1))
 
+        # Create vertical gradient
         if white_top > white_bottom:
             vertical_brightness_gradient = list(range(white_bottom, white_top + 1))
             vertical_brightness_gradient.reverse()
         else:
             vertical_brightness_gradient = list(range(white_top, white_bottom + 1))
 
+        # Stretch gradients to match window image size
         horizontal_brightness_gradient = stretch_to(horizontal_brightness_gradient,
                                                     window_image.shape[1])
         vertical_brightness_gradient = stretch_to(vertical_brightness_gradient,
                                                   window_image.shape[0])
 
+        # Tile gradients to 2D images
         horizontal_brightness_gradient = np.array([horizontal_brightness_gradient], dtype=window_image.dtype)
         horizontal_brightness_gradient = np.tile(horizontal_brightness_gradient, (window_image.shape[0], 1))
-
         vertical_brightness_gradient = np.array([vertical_brightness_gradient], dtype=window_image.dtype)
         vertical_brightness_gradient = np.tile(vertical_brightness_gradient, (window_image.shape[1], 1))
         vertical_brightness_gradient = np.transpose(vertical_brightness_gradient)
 
+        # Combine gradients
         brightness_gradient = cv2.addWeighted(horizontal_brightness_gradient, 0.5,
                                               vertical_brightness_gradient, 0.5, 0.)
 
+        # Apply blur
         # brightness_gradient = cv2.GaussianBlur(brightness_gradient, (49, 49), 0)
 
+        # Add brightness gradient
         window_image_hsv = cv2.cvtColor(window_image, cv2.COLOR_BGR2HSV)
-
-        # window_warp_lab = cv2.cvtColor(window_warp, cv2.COLOR_BGR2LAB)
-
-        # window_warp[:, :, 0] = cv2.bitwise_and(window_warp[:, :, 0], brightness_gradient)
-        # window_warp[:, :, 1] = cv2.bitwise_and(window_warp[:, :, 1], brightness_gradient)
-        # window_warp[:, :, 2] = cv2.bitwise_and(window_warp[:, :, 2], brightness_gradient)
-
         window_image_hsv[:, :, 2] = cv2.bitwise_and(window_image_hsv[:, :, 2], brightness_gradient)
-        # window_warp_lab[:, :, 0] = cv2.bitwise_and(window_warp_lab[:, :, 0], brightness_gradient)
-
-        # window_warp = cv2.cvtColor(window_warp_lab, cv2.COLOR_LAB2BGR)
 
         return cv2.cvtColor(window_image_hsv, cv2.COLOR_HSV2BGR)
 

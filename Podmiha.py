@@ -77,7 +77,8 @@ import HTTPStreamer
 # - TODO: добавить контроль времени кадра
 # - TODO: попробовать ИНВЕРТИРОВАТЬ маркеры
 # TODO: сделать переключение между градиентом и просто срежней яркостью
-# TODO: фейк миганием экрана
+# - TODO: фейк миганием экрана
+# - TODO: сделать быстрое переключение между режимами фейка
 
 
 APP_VERSION = "1.0.0"
@@ -120,8 +121,8 @@ class Window(QMainWindow):
         self.camera_btn_mode_open = True
         self.btn_open_camera.clicked.connect(self.open_camera)
         self.btn_refresh_windows.clicked.connect(self.refresh_windows)
-        self.input_image_mode.clicked.connect(self.change_preview_mode)
-        self.output_image_mode.clicked.connect(self.change_preview_mode)
+        self.input_image_mode.clicked.connect(self.change_preview_click_input)
+        self.output_image_mode.clicked.connect(self.change_preview_click_output)
 
         # Initialize logger
         self.setup_logger()
@@ -202,6 +203,7 @@ class Window(QMainWindow):
         # Connect timer
         self.settings_timer.timeout.connect(self.write_settings)
 
+        # Open flicker
         self.flicker.show()
 
         # Start OpenCV thread
@@ -343,13 +345,17 @@ class Window(QMainWindow):
         :return:
         """
 
-        # Fake screen enabled
-        if self.settings_handler.settings["fake_screen"]:
-            # Disable selector
-            self.fake_type_aruco.setEnabled(False)
-            self.fake_type_flicker.setEnabled(False)
-
-            # Disable all elements regardless of fake type
+        # Flicker mode
+        if self.settings_handler.settings["fake_mode"] == OpenCVHandler.FAKE_MODE_FLICKER:
+            # Disable ARUco controls and hide markers in flicker mode
+            self.marker_top_left.hide()
+            self.marker_top_right.hide()
+            self.marker_bottom_right.hide()
+            self.marker_bottom_left.hide()
+            self.bar_left.hide()
+            self.bar_top.hide()
+            self.bar_right.hide()
+            self.bar_bottom.hide()
             self.aruco_size.setEnabled(False)
             self.aruco_invert_checkbox.setEnabled(False)
             self.aruco_margin_left.setEnabled(False)
@@ -360,11 +366,11 @@ class Window(QMainWindow):
             self.id_tr.setEnabled(False)
             self.id_br.setEnabled(False)
             self.id_bl.setEnabled(False)
-            self.flicker_duration.setEnabled(False)
-            self.flicker_interval.setEnabled(False)
 
-            # ARUco mode
-            if self.settings_handler.settings["fake_mode"] == OpenCVHandler.FAKE_MODE_ARUCO:
+        # ARUco mode
+        elif self.settings_handler.settings["fake_mode"] == OpenCVHandler.FAKE_MODE_ARUCO:
+            # Fake screen enabled
+            if self.settings_handler.settings["fake_screen"]:
                 aruco_size = int(self.settings_handler.settings["aruco_size"])
                 aruco_margins = self.settings_handler.settings["aruco_margins"]
                 invert = self.settings_handler.settings["aruco_invert"]
@@ -383,14 +389,8 @@ class Window(QMainWindow):
                 self.bar_right.show_bar(aruco_size, Bar.POSITION_RIGHT, aruco_margins, invert)
                 self.bar_bottom.show_bar(aruco_size, Bar.POSITION_BOTTOM, aruco_margins, invert)
 
-        # Fake screen disabled
-        else:
-            # Enable selector
-            self.fake_type_aruco.setEnabled(True)
-            self.fake_type_flicker.setEnabled(True)
-
-            # ARUco mode
-            if self.settings_handler.settings["fake_mode"] == OpenCVHandler.FAKE_MODE_ARUCO:
+            # Fake screen disabled
+            else:
                 self.marker_top_left.hide()
                 self.marker_top_right.hide()
                 self.marker_bottom_right.hide()
@@ -410,24 +410,13 @@ class Window(QMainWindow):
                 self.id_br.setEnabled(True)
                 self.id_bl.setEnabled(True)
 
-                self.flicker_duration.setEnabled(False)
-                self.flicker_interval.setEnabled(False)
-
-            # Flicker mode
-            elif self.settings_handler.settings["fake_mode"] == OpenCVHandler.FAKE_MODE_FLICKER:
-                self.flicker_duration.setEnabled(True)
-                self.flicker_interval.setEnabled(True)
-
-                self.aruco_size.setEnabled(False)
-                self.aruco_invert_checkbox.setEnabled(False)
-                self.aruco_margin_left.setEnabled(False)
-                self.aruco_margin_top.setEnabled(False)
-                self.aruco_margin_right.setEnabled(False)
-                self.aruco_margin_bottom.setEnabled(False)
-                self.id_tl.setEnabled(False)
-                self.id_tr.setEnabled(False)
-                self.id_br.setEnabled(False)
-                self.id_bl.setEnabled(False)
+        # Stretch works only in ARUco fake mode
+        if self.settings_handler.settings["fake_mode"] == OpenCVHandler.FAKE_MODE_ARUCO:
+            self.stretch_scale_x.setEnabled(True)
+            self.stretch_scale_y.setEnabled(True)
+        else:
+            self.stretch_scale_x.setEnabled(False)
+            self.stretch_scale_y.setEnabled(False)
 
         # OpenCVHandler
         self.opencv_handler.update_from_settings()
@@ -541,6 +530,14 @@ class Window(QMainWindow):
             self.output_width.setValue(int(int(self.output_height.value()) * (16 / 9)))
             self.output_width.valueChanged.connect(self.resize_output_width)
         self.update_settings()
+
+    def change_preview_click_input(self):
+        self.output_image_mode.setChecked(not self.input_image_mode.isChecked())
+        self.change_preview_mode()
+
+    def change_preview_click_output(self):
+        self.input_image_mode.setChecked(not self.output_image_mode.isChecked())
+        self.change_preview_mode()
 
     def change_preview_mode(self):
         """

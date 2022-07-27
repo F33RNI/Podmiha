@@ -1,5 +1,9 @@
-<h1 align="center">Podmiha</h1>
-
+<h1 align="center">Podmiha exam helper</h1>
+<div style="width:100%;text-align:center;">
+    <p align="center">
+        <img src="./PODMIHA_DESCRIPTION.jpg" width="auto" height="400">
+    </p>
+</div>
 <div style="width:100%;text-align:center;">
     <p align="center">
         <a href="https://twitter.com/fern_hertz"><img alt="Twitter" src="https://img.shields.io/twitter/url?label=My%20twitter&style=social&url=https%3A%2F%2Ftwitter.com%2Ffern_hertz" ></a>

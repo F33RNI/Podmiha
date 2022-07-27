@@ -47,6 +47,7 @@ class Flicker(PyQt5.QtWidgets.QLabel):
         self.geometry_zero = PyQt5.QtCore.QRect(0, 0, 1, 1)
         self.width_ = 0
         self.height_ = 0
+        self.force_fullscreen_enabled = False
 
         # Display markers always on top
         self.setWindowFlags(QtCore.Qt.Tool
@@ -58,6 +59,8 @@ class Flicker(PyQt5.QtWidgets.QLabel):
 
         self.update_geometry.connect(self.setGeometry)
         self.update_frame.connect(self.setPixmap)
+
+        self.mouseDoubleClickEvent = self.close_fullscreen
 
         # Create first QApplication if no created
         if PyQt5.QtWidgets.QApplication.instance() is None:
@@ -84,6 +87,16 @@ class Flicker(PyQt5.QtWidgets.QLabel):
 
         self.setGeometry(self.geometry_zero)
 
+    def is_force_fullscreen_enabled(self):
+        return self.force_fullscreen_enabled
+
+    def open_fullscreen(self, frame):
+        if frame is not None:
+            # Set fullscreen flag
+            self.force_fullscreen_enabled = True
+            # Open on fullscreen
+            self.flick_frame_start(frame)
+
     def flick_frame_start(self, frame):
         if frame is not None:
             try:
@@ -106,8 +119,10 @@ class Flicker(PyQt5.QtWidgets.QLabel):
                 print(e)
 
     def flick_frame_stop(self):
-        try:
-            pass
+        if not self.force_fullscreen_enabled:
             self.update_geometry.emit(self.geometry_zero)
-        except Exception as e:
-            print(e)
+
+    def close_fullscreen(self, event):
+        if self.force_fullscreen_enabled:
+            self.force_fullscreen_enabled = False
+            self.update_geometry.emit(self.geometry_zero)

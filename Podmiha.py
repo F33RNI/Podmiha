@@ -68,17 +68,18 @@ import HTTPStreamer
 # TODO: сделать вывод в RTSP стрим (для виртуалки)
 # - TODO: добавить размытие
 # - TODO: сделать глобальный выход при закрытии + спрашивать подтверждение на выход
-# TODO: сделать размыливание границ
-# TODO: попробовать сделать просто поиск черной рамки экрана (добавить белую рамку)
-# TODO: пофиксить кадр при отключении камеры
-# TODO: определять яркость не через warp а рисуя всё что не маркер черным и беря max
+# ? TODO: сделать размыливание границ
+# - TODO: попробовать сделать просто поиск черной рамки экрана (добавить белую рамку)
+# - TODO: пофиксить кадр при отключении камеры
+# - TODO: определять яркость не через warp а рисуя всё что не маркер черным и беря max
 # TODO: добавить фильтрацию кординат маркеров
 # - TODO: шум не ресайзить а просто кропить
 # - TODO: добавить контроль времени кадра
 # - TODO: попробовать ИНВЕРТИРОВАТЬ маркеры
-# TODO: сделать переключение между градиентом и просто срежней яркостью
+# ? TODO: сделать переключение между градиентом и просто срежней яркостью
 # - TODO: фейк миганием экрана
 # - TODO: сделать быстрое переключение между режимами фейка
+# TODO: добавить возможность просто отобразить нужное окно на весь экран и при нажатии на эту картинку (или ещё что-то) включется ARUCO
 
 
 APP_VERSION = "1.0.0"
@@ -121,8 +122,10 @@ class Window(QMainWindow):
         self.camera_btn_mode_open = True
         self.btn_open_camera.clicked.connect(self.open_camera)
         self.btn_refresh_windows.clicked.connect(self.refresh_windows)
-        self.input_image_mode.clicked.connect(self.change_preview_click_input)
-        self.output_image_mode.clicked.connect(self.change_preview_click_output)
+        self.btn_show_fullscreen.clicked.connect(self.show_fullscreen)
+        self.input_image_mode.clicked.connect(self.change_preview_mode)
+        self.window_image_mode.clicked.connect(self.change_preview_mode)
+        self.output_image_mode.clicked.connect(self.change_preview_mode)
 
         # Initialize logger
         self.setup_logger()
@@ -163,25 +166,29 @@ class Window(QMainWindow):
 
         # Connect settings updater
         self.camera_id.valueChanged.connect(self.update_settings)
-        self.use_dshow.clicked.connect(self.update_settings)
+        self.use_dshow.clicked.connect(self.write_settings)
         self.camera_exposure.valueChanged.connect(self.update_settings)
-        self.camera_exposure_auto.clicked.connect(self.update_settings)
+        self.camera_exposure_auto.clicked.connect(self.write_settings)
         self.camera_focus.valueChanged.connect(self.update_settings)
-        self.camera_focus_auto.clicked.connect(self.update_settings)
-        self.fake_screen_checkbox.clicked.connect(self.update_settings)
+        self.camera_focus_auto.clicked.connect(self.write_settings)
+        self.fake_screen_checkbox.clicked.connect(self.write_settings)
         self.windows_titles.currentTextChanged.connect(self.update_settings)
+        self.window_capture_stable.clicked.connect(self.write_settings)
+        self.window_capture_experimental.clicked.connect(self.write_settings)
         self.window_crop_left.valueChanged.connect(self.update_settings)
         self.window_crop_top.valueChanged.connect(self.update_settings)
         self.window_crop_right.valueChanged.connect(self.update_settings)
         self.window_crop_bottom.valueChanged.connect(self.update_settings)
-        self.fake_type_aruco.clicked.connect(self.update_settings)
-        self.fake_type_flicker.clicked.connect(self.update_settings)
+        self.fake_type_aruco.clicked.connect(self.write_settings)
+        self.fake_type_flicker.clicked.connect(self.write_settings)
         self.flicker_duration.valueChanged.connect(self.update_settings)
         self.flicker_interval.valueChanged.connect(self.update_settings)
+        self.frame_blending.clicked.connect(self.write_settings)
         self.stretch_scale_x.valueChanged.connect(self.update_settings)
         self.stretch_scale_y.valueChanged.connect(self.update_settings)
+        self.brightness_gradient.clicked.connect(self.write_settings)
         self.aruco_size.valueChanged.connect(self.update_settings)
-        self.aruco_invert_checkbox.clicked.connect(self.update_settings)
+        self.aruco_invert_checkbox.clicked.connect(self.write_settings)
         self.aruco_margin_left.valueChanged.connect(self.update_settings)
         self.aruco_margin_top.valueChanged.connect(self.update_settings)
         self.aruco_margin_right.valueChanged.connect(self.update_settings)
@@ -190,8 +197,8 @@ class Window(QMainWindow):
         self.id_tr.valueChanged.connect(self.update_settings)
         self.id_br.valueChanged.connect(self.update_settings)
         self.id_bl.valueChanged.connect(self.update_settings)
-        self.virtual_camera_enabled.clicked.connect(self.update_settings)
-        self.http_stream_enabled.clicked.connect(self.update_settings)
+        self.virtual_camera_enabled.clicked.connect(self.write_settings)
+        self.http_stream_enabled.clicked.connect(self.write_settings)
         self.output_blur_radius.valueChanged.connect(self.update_settings)
         self.noise_amount.valueChanged.connect(self.update_settings)
         self.http_server_ip.textChanged.connect(self.update_settings)
@@ -229,12 +236,17 @@ class Window(QMainWindow):
             # Window capture
             self.fake_screen_checkbox.setChecked(self.settings_handler.settings["fake_screen"])
             self.refresh_windows()
+            self.window_capture_stable.setChecked(int(self.settings_handler.settings["window_capture_method"])
+                                                  == OpenCVHandler.WINDOW_CAPTURE_STABLE)
+            self.window_capture_experimental.setChecked(int(self.settings_handler.settings["window_capture_method"])
+                                                        == OpenCVHandler.WINDOW_CAPTURE_EXPERIMENTAL)
             self.window_crop_left.setValue(int(self.settings_handler.settings["window_crop"][0]))
             self.window_crop_top.setValue(int(self.settings_handler.settings["window_crop"][1]))
             self.window_crop_right.setValue(int(self.settings_handler.settings["window_crop"][2]))
             self.window_crop_bottom.setValue(int(self.settings_handler.settings["window_crop"][3]))
             self.stretch_scale_x.setValue(float(self.settings_handler.settings["stretch_scale"][0]))
             self.stretch_scale_y.setValue(float(self.settings_handler.settings["stretch_scale"][1]))
+            self.brightness_gradient.setChecked(self.settings_handler.settings["brightness_gradient"])
             self.fake_type_aruco.setChecked(int(self.settings_handler.settings["fake_mode"])
                                             == OpenCVHandler.FAKE_MODE_ARUCO)
             self.fake_type_flicker.setChecked(int(self.settings_handler.settings["fake_mode"])
@@ -243,6 +255,7 @@ class Window(QMainWindow):
             # Flicker
             self.flicker_duration.setValue(int(self.settings_handler.settings["flicker_duration"]))
             self.flicker_interval.setValue(int(self.settings_handler.settings["flicker_interval"]))
+            self.frame_blending.setChecked(self.settings_handler.settings["frame_blending"])
 
             # ARUco markers
             self.aruco_size.setValue(int(self.settings_handler.settings["aruco_size"]))
@@ -297,18 +310,22 @@ class Window(QMainWindow):
         # Window capture
         self.settings_handler.settings["fake_screen"] = self.fake_screen_checkbox.isChecked()
         self.settings_handler.settings["window_title"] = str(self.windows_titles.currentText())
+        self.settings_handler.settings["window_capture_method"] = OpenCVHandler.WINDOW_CAPTURE_STABLE \
+            if self.window_capture_stable.isChecked() else OpenCVHandler.WINDOW_CAPTURE_EXPERIMENTAL
         self.settings_handler.settings["window_crop"][0] = int(self.window_crop_left.value())
         self.settings_handler.settings["window_crop"][1] = int(self.window_crop_top.value())
         self.settings_handler.settings["window_crop"][2] = int(self.window_crop_right.value())
         self.settings_handler.settings["window_crop"][3] = int(self.window_crop_bottom.value())
         self.settings_handler.settings["stretch_scale"][0] = float(self.stretch_scale_x.value())
         self.settings_handler.settings["stretch_scale"][1] = float(self.stretch_scale_y.value())
+        self.settings_handler.settings["brightness_gradient"] = self.brightness_gradient.isChecked()
         self.settings_handler.settings["fake_mode"] = OpenCVHandler.FAKE_MODE_FLICKER \
             if self.fake_type_flicker.isChecked() else OpenCVHandler.FAKE_MODE_ARUCO
 
         # Flicker
         self.settings_handler.settings["flicker_duration"] = int(self.flicker_duration.value())
         self.settings_handler.settings["flicker_interval"] = int(self.flicker_interval.value())
+        self.settings_handler.settings["frame_blending"] = self.frame_blending.isChecked()
 
         # ARUco markers
         self.settings_handler.settings["aruco_size"] = int(self.aruco_size.value())
@@ -418,6 +435,9 @@ class Window(QMainWindow):
             self.stretch_scale_x.setEnabled(False)
             self.stretch_scale_y.setEnabled(False)
 
+        # Enable fullscreen button only if fake screen enabled
+        self.btn_show_fullscreen.setEnabled(self.settings_handler.settings["fake_screen"])
+
         # OpenCVHandler
         self.opencv_handler.update_from_settings()
 
@@ -478,6 +498,13 @@ class Window(QMainWindow):
         except Exception as e:
             logging.exception(e)
 
+    def show_fullscreen(self):
+        """
+        Temporarily opens a screenshot of a window in full screen
+        :return:
+        """
+        self.flicker.open_fullscreen(self.opencv_handler.get_window_image())
+
     def setup_logger(self):
         """
         Sets up logs redirection and formatting
@@ -531,14 +558,6 @@ class Window(QMainWindow):
             self.output_width.valueChanged.connect(self.resize_output_width)
         self.update_settings()
 
-    def change_preview_click_input(self):
-        self.output_image_mode.setChecked(not self.input_image_mode.isChecked())
-        self.change_preview_mode()
-
-    def change_preview_click_output(self):
-        self.input_image_mode.setChecked(not self.output_image_mode.isChecked())
-        self.change_preview_mode()
-
     def change_preview_mode(self):
         """
         Selects preview mode
@@ -546,6 +565,8 @@ class Window(QMainWindow):
         """
         if self.input_image_mode.isChecked():
             self.opencv_handler.set_preview_mode(OpenCVHandler.PREVIEW_SOURCE)
+        elif self.window_image_mode.isChecked():
+            self.opencv_handler.set_preview_mode(OpenCVHandler.PREVIEW_WINDOW)
         elif self.output_image_mode.isChecked():
             self.opencv_handler.set_preview_mode(OpenCVHandler.PREVIEW_OUTPUT)
 

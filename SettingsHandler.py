@@ -33,11 +33,14 @@ SETTINGS_DEFAULT = {
     "input_camera_focus_auto": False,
     "fake_screen": False,
     "window_title": "",
+    "window_capture_method": 0,
     "window_crop": [5, 8, 0, 4],
     "fake_mode": 0,
     "flicker_duration": 2,
     "flicker_interval": 10,
+    "frame_blending": False,
     "stretch_scale": [1., 1.],
+    "brightness_gradient": True,
     "aruco_size": 200,
     "aruco_invert": True,
     "aruco_margins": [0, 0, 0, 0],
@@ -49,7 +52,7 @@ SETTINGS_DEFAULT = {
     "output_noise_amount": 0.,
     "http_server_ip": "localhost",
     "http_server_port": 8080,
-    "jpeg_quality": 20
+    "jpeg_quality": 50
     }
 
 

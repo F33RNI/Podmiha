@@ -28,7 +28,9 @@ import cv2
 import numpy as np
 import pyvirtualcam
 import qimage2ndarray
+import win32con
 import win32gui
+import win32ui
 from PIL import ImageGrab
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPixmap
@@ -38,10 +40,41 @@ from cv2 import aruco
 import winguiauto
 
 PREVIEW_OUTPUT = 0
-PREVIEW_SOURCE = 1
+PREVIEW_WINDOW = 1
+PREVIEW_SOURCE = 2
 
 FAKE_MODE_ARUCO = 0
 FAKE_MODE_FLICKER = 1
+
+WINDOW_CAPTURE_STABLE = 0
+WINDOW_CAPTURE_EXPERIMENTAL = 1
+
+
+def _map(x, in_min, in_max, out_min, out_max):
+    """
+    Aluino map function
+    :param x:
+    :param in_min:
+    :param in_max:
+    :param out_min:
+    :param out_max:
+    :return:
+    """
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+
+def resize_keep_ratio(source_image, target_width, target_height, interpolation=cv2.INTER_AREA):
+    """
+    Resize image and keeps aspect ratio (background fills with black)
+    """
+    border_v = 0
+    border_h = 0
+    if (target_height / target_width) >= (source_image.shape[0] / source_image.shape[1]):
+        border_v = int((((target_height / target_width) * source_image.shape[1]) - source_image.shape[0]) / 2)
+    else:
+        border_h = int((((target_width / target_height) * source_image.shape[0]) - source_image.shape[1]) / 2)
+    output_image = cv2.copyMakeBorder(source_image, border_v, border_v, border_h, border_h, cv2.BORDER_CONSTANT, 0)
+    return cv2.resize(output_image, (target_width, target_height), interpolation)
 
 
 def change_window_state(window_name: str, state):
@@ -132,6 +165,91 @@ def stretch_to(list_, target_length: int):
     return out
 
 
+def calculate_and_apply_brightness(marker_tl, marker_tr, marker_br, marker_bl, input_gray,
+                                   window_image, use_gradient=False):
+    # Calculate max white value
+    # Top left
+    aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
+    cv2.drawContours(aruco_mask, [np.array([marker_tl], dtype=int)], -1, (255, 255, 255), -1)
+    masked = cv2.bitwise_and(input_gray, aruco_mask)
+    max_white_tl = int(masked.max())
+
+    # Top right
+    aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
+    cv2.drawContours(aruco_mask, [np.array([marker_tr], dtype=int)], -1, (255, 255, 255), -1)
+    masked = cv2.bitwise_and(input_gray, aruco_mask)
+    max_white_tr = int(masked.max())
+
+    # Bottom right
+    aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
+    cv2.drawContours(aruco_mask, [np.array([marker_br], dtype=int)], -1, (255, 255, 255), -1)
+    masked = cv2.bitwise_and(input_gray, aruco_mask)
+    max_white_br = int(masked.max())
+
+    # Bottom left
+    aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
+    cv2.drawContours(aruco_mask, [np.array([marker_bl], dtype=int)], -1, (255, 255, 255), -1)
+    masked = cv2.bitwise_and(input_gray, aruco_mask)
+    max_white_bl = int(masked.max())
+
+    # Calculate average white values
+    white_left = (max_white_tl + max_white_bl) // 2
+    white_top = (max_white_tl + max_white_tr) // 2
+    white_right = (max_white_tr + max_white_br) // 2
+    white_bottom = (max_white_bl + max_white_br) // 2
+
+    # Brightness gradient
+    if use_gradient:
+        # Create horizontal gradient
+        if white_left > white_right:
+            horizontal_brightness_gradient = list(range(white_right, white_left + 1))
+            horizontal_brightness_gradient.reverse()
+        else:
+            horizontal_brightness_gradient = list(range(white_left, white_right + 1))
+
+        # Create vertical gradient
+        if white_top > white_bottom:
+            vertical_brightness_gradient = list(range(white_bottom, white_top + 1))
+            vertical_brightness_gradient.reverse()
+        else:
+            vertical_brightness_gradient = list(range(white_top, white_bottom + 1))
+
+        # Stretch gradients to match window image size
+        horizontal_brightness_gradient = stretch_to(horizontal_brightness_gradient,
+                                                    window_image.shape[1])
+        vertical_brightness_gradient = stretch_to(vertical_brightness_gradient,
+                                                  window_image.shape[0])
+
+        # Tile gradients to 2D images
+        horizontal_brightness_gradient = np.array([horizontal_brightness_gradient], dtype=window_image.dtype)
+        horizontal_brightness_gradient = np.tile(horizontal_brightness_gradient, (window_image.shape[0], 1))
+        vertical_brightness_gradient = np.array([vertical_brightness_gradient], dtype=window_image.dtype)
+        vertical_brightness_gradient = np.tile(vertical_brightness_gradient, (window_image.shape[1], 1))
+        vertical_brightness_gradient = np.transpose(vertical_brightness_gradient)
+
+        # Combine gradients
+        brightness_gradient = cv2.addWeighted(horizontal_brightness_gradient, 0.5,
+                                              vertical_brightness_gradient, 0.5, 0.)
+
+        # Apply blur
+        # brightness_gradient = cv2.GaussianBlur(brightness_gradient, (49, 49), 0)
+
+        # Add brightness gradient
+        window_image_hsv = cv2.cvtColor(window_image, cv2.COLOR_BGR2HSV)
+        window_image_hsv[:, :, 2] = cv2.bitwise_and(window_image_hsv[:, :, 2], brightness_gradient)
+
+    # Average brightness
+    else:
+        # Calculate average brightness
+        average_brightness = (white_left + white_top + white_right + white_bottom) // 4
+
+        # Add average brightness
+        window_image_hsv = cv2.cvtColor(window_image, cv2.COLOR_BGR2HSV)
+        window_image_hsv[:, :, 2] = cv2.bitwise_and(window_image_hsv[:, :, 2], average_brightness)
+
+    return cv2.cvtColor(window_image_hsv, cv2.COLOR_HSV2BGR)
+
+
 class OpenCVHandler:
     def __init__(self, settings_handler, http_stream, flicker,
                  update_preview: QtCore.pyqtSignal, preview_label: PyQt5.QtWidgets.QLabel):
@@ -181,6 +299,14 @@ class OpenCVHandler:
         self.fake_mode = 0
         self.flicker_duration = 0
         self.flicker_interval = 0
+        self.window_dc = None
+        self.c_dc = None
+        self.dc_object = None
+        self.data_bitmap = None
+        self.window_capture_method = 0
+        self.window_image = None
+        self.frame_blending = False
+        self.brightness_gradient_enabled = False
 
         # Use 4x4 50 ARUco dictionary
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
@@ -195,6 +321,9 @@ class OpenCVHandler:
 
     def get_final_output_frame(self):
         return self.final_output_frame
+
+    def get_window_image(self):
+        return self.window_image
 
     def start_opencv_thread(self):
         """
@@ -216,6 +345,7 @@ class OpenCVHandler:
         self.aruco_invert = self.settings_handler.settings["aruco_invert"]
         self.marker_ids = self.settings_handler.settings["aruco_ids"]
         self.window_title = str(self.settings_handler.settings["window_title"])
+        self.window_capture_method = int(self.settings_handler.settings["window_capture_method"])
         self.window_capture_allowed = self.settings_handler.settings["fake_screen"]
         self.crop_top = int(self.settings_handler.settings["window_crop"][0])
         self.crop_left = int(self.settings_handler.settings["window_crop"][1])
@@ -231,6 +361,8 @@ class OpenCVHandler:
         self.fake_mode = int(self.settings_handler.settings["fake_mode"])
         self.flicker_duration = int(self.settings_handler.settings["flicker_duration"])
         self.flicker_interval = int(self.settings_handler.settings["flicker_interval"])
+        self.frame_blending = self.settings_handler.settings["frame_blending"]
+        self.brightness_gradient_enabled = self.settings_handler.settings["brightness_gradient"]
 
         if self.video_capture is not None:
             # Focus
@@ -241,7 +373,16 @@ class OpenCVHandler:
             self.video_capture.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1 if self.input_camera_exposure_auto else 0)
             self.video_capture.set(cv2.CAP_PROP_EXPOSURE, self.input_camera_exposure)
 
+        # Release old window handlers and update hwnd
         self.hwnd = winguiauto.findTopWindow(self.window_title)
+        # noinspection PyBroadException
+        try:
+            self.dc_object.DeleteDC()
+            self.c_dc.DeleteDC()
+            win32gui.ReleaseDC(self.hwnd, self.window_dc)
+            win32gui.DeleteObject(self.data_bitmap.GetHandle())
+        except:
+            pass
         # change_window_state(self.window_title, win32con.SW_SHOWMAXIMIZED)
 
     def open_camera(self):
@@ -308,8 +449,10 @@ class OpenCVHandler:
         """
         self.flick_counter = 0
         input_ret = False
-        window_image = None
+        self.window_image = None
         black_frame = np.zeros((1280, 720, 3), dtype=np.uint8)
+        flicker_key_frame_1 = None
+        flicker_key_frame_2 = None
 
         noise = cv2.VideoCapture("noise.avi")
 
@@ -325,13 +468,40 @@ class OpenCVHandler:
                 time_started = time.time()
 
                 # Grab window image
+                # noinspection PyBroadException
+                window_image = None
                 try:
                     if self.window_capture_allowed and self.hwnd is not None:
-                        rect = win32gui.GetWindowPlacement(self.hwnd)[-1]
-                        window_image = cv2.cvtColor(np.array(ImageGrab.grab(rect)), cv2.COLOR_RGB2BGR)
+                        if self.window_capture_method == WINDOW_CAPTURE_STABLE:
+                            # Don't update window image in fullscreen mode with stable capture mode
+                            if not self.flicker.is_force_fullscreen_enabled():
+                                rect = win32gui.GetWindowPlacement(self.hwnd)[-1]
+                                window_image = cv2.cvtColor(np.array(ImageGrab.grab(rect)), cv2.COLOR_RGB2BGR)
+                        elif self.window_capture_method == WINDOW_CAPTURE_EXPERIMENTAL:
+                            # Get window rectangle
+                            window_rect = win32gui.GetWindowRect(self.hwnd)
+                            w = window_rect[2] - window_rect[0]
+                            h = window_rect[3] - window_rect[1]
+
+                            # Get the window image data
+                            self.window_dc = win32gui.GetWindowDC(self.hwnd)
+                            self.dc_object = win32ui.CreateDCFromHandle(self.window_dc)
+                            self.c_dc = self.dc_object.CreateCompatibleDC()
+                            self.data_bitmap = win32ui.CreateBitmap()
+                            self.data_bitmap.CreateCompatibleBitmap(self.dc_object, w, h)
+                            self.c_dc.SelectObject(self.data_bitmap)
+                            self.c_dc.BitBlt((0, 0), (w, h), self.dc_object, (0, 0), win32con.SRCCOPY)
+
+                            # Convert the raw data into a format opencv can read
+                            signed_ints_array = self.data_bitmap.GetBitmapBits(True)
+                            img = np.fromstring(signed_ints_array, dtype='uint8')
+                            img.shape = (h, w, 4)
+                            img = img[..., :3]
+                            window_image = np.ascontiguousarray(img)
                     else:
                         allow_fake_screen = False
                 except:
+                    logging.error("Can't get window image!")
                     window_image = black_frame.copy()
                     error = True
 
@@ -340,25 +510,28 @@ class OpenCVHandler:
                     window_image = black_frame.copy()
 
                 # Crop window image
-                window_image = window_image[
-                               self.crop_top:window_image.shape[0] - self.crop_top - self.crop_bottom,
-                               self.crop_left:window_image.shape[1] - self.crop_left - self.crop_right]
+                self.window_image = window_image[
+                                    self.crop_top:window_image.shape[0] - self.crop_top - self.crop_bottom,
+                                    self.crop_left:window_image.shape[1] - self.crop_left - self.crop_right]
 
                 # Grab the current camera frame
+                # noinspection PyBroadException
                 try:
-                    if self.camera_capture_allowed and self.video_capture.isOpened():
+                    if self.camera_capture_allowed and self.video_capture.isOpened() and not error:
                         if self.fake_mode == FAKE_MODE_FLICKER and self.fake_screen:
                             # Count flicker frames
                             self.flick_counter += 1
 
                             # Flick!
                             if self.flick_counter == self.flicker_interval:
-                                self.flicker.flick_frame_start(window_image)
+                                self.flicker.flick_frame_start(self.window_image)
 
                             # Counter ended
                             elif self.flick_counter >= self.flicker_interval + self.flicker_duration:
-                                # Reset flick counter
-                                self.flick_counter = 0
+                                # Update frame blending
+                                if flicker_key_frame_2 is not None:
+                                    flicker_key_frame_1 = flicker_key_frame_2.copy()
+                                flicker_key_frame_2 = None
 
                                 # Check image
                                 x_1 = self.flicker.geometry().x()
@@ -366,8 +539,8 @@ class OpenCVHandler:
                                 x_2 = x_1 + self.flicker.geometry().width()
                                 y_2 = y_1 + self.flicker.geometry().height()
                                 real_image = cv2.resize(cv2.cvtColor(
-                                    np.array(ImageGrab.grab((x_1, y_1, x_2, y_2))), cv2.COLOR_RGB2BGR)
-                                    , (self.flicker.width_, self.flicker.height_))
+                                    np.array(ImageGrab.grab((x_1, y_1, x_2, y_2))), cv2.COLOR_RGB2BGR),
+                                    (self.flicker.width_, self.flicker.height_))
                                 if real_image[0, 0, 0] == 255 \
                                         and real_image[0, 0, 1] == 0 \
                                         and real_image[0, 0, 2] == 0 \
@@ -381,23 +554,49 @@ class OpenCVHandler:
                                     self.flicker.flick_frame_stop()
 
                                     # Retrieve frame
-                                    input_ret, self.input_frame = self.video_capture.read()
+                                    input_ret, flicker_key_frame_2 = self.video_capture.read()
+
+                                    # Reset counter
+                                    self.flick_counter = 0
+
+                            # Frame blending
+                            if flicker_key_frame_1 is not None and flicker_key_frame_2 is not None \
+                                    and self.frame_blending:
+                                # Calculate input_frame_counter for frame blending
+                                input_frame_factor = _map(self.flick_counter,
+                                                          0., self.flicker_interval + self.flicker_duration, 0., 1.)
+                                self.input_frame = cv2.addWeighted(flicker_key_frame_1,
+                                                                   1. - input_frame_factor,
+                                                                   flicker_key_frame_2, input_frame_factor, 0.)
+                            else:
+                                self.input_frame = flicker_key_frame_2
 
                         # No flicker fake
                         else:
                             # Stop flicking
                             self.flicker.flick_frame_stop()
 
-                            # Reset flick counter
+                            # Reset flick variables
                             self.flick_counter = 0
+                            flicker_key_frame_1 = None
+                            flicker_key_frame_2 = None
 
                             # Retrieve frame
                             input_ret, self.input_frame = self.video_capture.read()
 
-                    # Disable fake screen if no camera image
+                    # No camera image
                     else:
+                        # Stop flicking
+                        self.flicker.flick_frame_stop()
+
+                        # Reset flicker variables
+                        flicker_key_frame_1 = None
+                        flicker_key_frame_2 = None
+
+                        # Disable fake screen
                         allow_fake_screen = False
-                except:
+                except Exception as e:
+                    print(e)
                     input_ret = False
                     error = True
 
@@ -429,7 +628,10 @@ class OpenCVHandler:
                 #                                             cameraMatrix=self.CAMERA_MATRIX,
                 #                                             distCoeff=self.CAMERA_DISTORTION)
 
-                if self.fake_screen and self.fake_mode == FAKE_MODE_ARUCO and allow_fake_screen:
+                if self.fake_screen \
+                        and self.fake_mode == FAKE_MODE_ARUCO \
+                        and allow_fake_screen \
+                        and not self.flicker.is_force_fullscreen_enabled():
                     if np.all(ids is not None):
                         # Check number of markers
                         if ids.size == 4:
@@ -462,15 +664,17 @@ class OpenCVHandler:
                                 bl = marker_bl[3]
 
                                 # Dimensions of the frames
-                                overlay_height = window_image.shape[0]
-                                overlay_width = window_image.shape[1]
+                                overlay_height = self.window_image.shape[0]
+                                overlay_width = self.window_image.shape[1]
                                 source_height = self.input_frame.shape[0]
                                 source_width = self.input_frame.shape[1]
 
                                 # Apply brightness gradient to image
-                                window_image = self.calculate_and_apply_brightness_gradient(marker_tl, marker_tr,
-                                                                                            marker_br, marker_bl,
-                                                                                            input_gray, window_image)
+                                window_image = calculate_and_apply_brightness(marker_tl, marker_tr,
+                                                                              marker_br, marker_bl,
+                                                                              input_gray,
+                                                                              self.window_image,
+                                                                              self.brightness_gradient_enabled)
 
                                 # Source points (full size of overlay image)
                                 points_src = np.array([
@@ -548,49 +752,57 @@ class OpenCVHandler:
                 # Resize output
                 output_frame = cv2.resize(output_frame, (self.output_width, self.output_height))
 
-                # Add blur
-                try:
-                    # Check blur radius
-                    if self.blur_radius % 2 == 0 or self.blur_radius <= 0:
-                        self.blur_radius += 1
-                    output_frame = cv2.GaussianBlur(output_frame, (self.blur_radius, self.blur_radius), 0)
-                except:
-                    pass
+                # Is frame totally black?
+                is_output_frame_black = cv2.countNonZero(cv2.cvtColor(output_frame, cv2.COLOR_BGR2GRAY)) == 0
 
-                # Add noise
-                try:
-                    # Read noise from file
-                    noise_ret, noise_frame = noise.read()
-                    if not noise_ret:
-                        noise = cv2.VideoCapture("noise.avi")
-                        _, noise_frame = noise.read()
+                # Add effects only on non-black output frame
+                if not is_output_frame_black:
+                    # Add blur
+                    # noinspection PyBroadException
+                    try:
+                        # Check blur radius
+                        if self.blur_radius % 2 == 0 or self.blur_radius <= 0:
+                            self.blur_radius += 1
+                        output_frame = cv2.GaussianBlur(output_frame, (self.blur_radius, self.blur_radius), 0)
+                    except:
+                        pass
 
-                    # Convert to grayscale
-                    noise_frame = cv2.cvtColor(noise_frame, cv2.COLOR_BGR2GRAY)
+                    # Add noise
+                    # noinspection PyBroadException
+                    try:
+                        # Read noise from file
+                        noise_ret, noise_frame = noise.read()
+                        if not noise_ret:
+                            noise = cv2.VideoCapture("noise.avi")
+                            _, noise_frame = noise.read()
 
-                    # Crop or resize
-                    if self.output_width <= noise_frame.shape[1] and self.output_height <= noise_frame.shape[0]:
-                        noise_frame = noise_frame[0:self.output_height, 0:self.output_width]
-                    else:
-                        noise_frame = cv2.resize(noise_frame,
-                                                 (self.output_width, self.output_height), interpolation=cv2.INTER_AREA)
+                        # Convert to grayscale
+                        noise_frame = cv2.cvtColor(noise_frame, cv2.COLOR_BGR2GRAY)
 
-                    # Convert output frame to HSV
-                    output_frame_hsv = cv2.cvtColor(output_frame, cv2.COLOR_BGR2HSV)
+                        # Crop or resize
+                        if self.output_width <= noise_frame.shape[1] and self.output_height <= noise_frame.shape[0]:
+                            noise_frame = noise_frame[0:self.output_height, 0:self.output_width]
+                        else:
+                            noise_frame = cv2.resize(noise_frame,
+                                                     (self.output_width, self.output_height),
+                                                     interpolation=cv2.INTER_AREA)
 
-                    # Add noise to darken areas
-                    output_frame_v_noisy = cv2.bitwise_not(
-                        cv2.bitwise_and(cv2.bitwise_not(output_frame_hsv[:, :, 2]), noise_frame))
+                        # Convert output frame to HSV
+                        output_frame_hsv = cv2.cvtColor(output_frame, cv2.COLOR_BGR2HSV)
 
-                    # Combine with clear output
-                    output_frame_v_noisy = cv2.addWeighted(output_frame_hsv[:, :, 2], 1. - self.output_noise_amount,
-                                                           output_frame_v_noisy, self.output_noise_amount, 0.)
-                    output_frame_hsv[:, :, 2] = output_frame_v_noisy
+                        # Add noise to darken areas
+                        output_frame_v_noisy = cv2.bitwise_not(
+                            cv2.bitwise_and(cv2.bitwise_not(output_frame_hsv[:, :, 2]), noise_frame))
 
-                    # Convert back to BGR
-                    output_frame = cv2.cvtColor(output_frame_hsv, cv2.COLOR_HSV2BGR)
-                except:
-                    pass
+                        # Combine with clear output
+                        output_frame_v_noisy = cv2.addWeighted(output_frame_hsv[:, :, 2], 1. - self.output_noise_amount,
+                                                               output_frame_v_noisy, self.output_noise_amount, 0.)
+                        output_frame_hsv[:, :, 2] = output_frame_v_noisy
+
+                        # Convert back to BGR
+                        output_frame = cv2.cvtColor(output_frame_hsv, cv2.COLOR_HSV2BGR)
+                    except:
+                        pass
 
                 # Make final image
                 if not error:
@@ -619,80 +831,6 @@ class OpenCVHandler:
         cv2.destroyAllWindows()
         logging.warning("OpenCV loop exited")
 
-    def calculate_and_apply_brightness_gradient(self, marker_tl, marker_tr, marker_br, marker_bl, input_gray,
-                                                window_image):
-
-        # Calculate max white value
-        # Top left
-        aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
-        cv2.drawContours(aruco_mask, [np.array([marker_tl], dtype=int)], -1, (255, 255, 255), -1)
-        masked = cv2.bitwise_and(input_gray, aruco_mask)
-        max_white_tl = int(masked.max())
-
-        # Top right
-        aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
-        cv2.drawContours(aruco_mask, [np.array([marker_tr], dtype=int)], -1, (255, 255, 255), -1)
-        masked = cv2.bitwise_and(input_gray, aruco_mask)
-        max_white_tr = int(masked.max())
-
-        # Bottom right
-        aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
-        cv2.drawContours(aruco_mask, [np.array([marker_br], dtype=int)], -1, (255, 255, 255), -1)
-        masked = cv2.bitwise_and(input_gray, aruco_mask)
-        max_white_br = int(masked.max())
-
-        # Bottom left
-        aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
-        cv2.drawContours(aruco_mask, [np.array([marker_bl], dtype=int)], -1, (255, 255, 255), -1)
-        masked = cv2.bitwise_and(input_gray, aruco_mask)
-        max_white_bl = int(masked.max())
-
-        # Calculate average white values
-        white_left = (max_white_tl + max_white_bl) // 2
-        white_top = (max_white_tl + max_white_tr) // 2
-        white_right = (max_white_tr + max_white_br) // 2
-        white_bottom = (max_white_bl + max_white_br) // 2
-
-        # Create horizontal gradient
-        if white_left > white_right:
-            horizontal_brightness_gradient = list(range(white_right, white_left + 1))
-            horizontal_brightness_gradient.reverse()
-        else:
-            horizontal_brightness_gradient = list(range(white_left, white_right + 1))
-
-        # Create vertical gradient
-        if white_top > white_bottom:
-            vertical_brightness_gradient = list(range(white_bottom, white_top + 1))
-            vertical_brightness_gradient.reverse()
-        else:
-            vertical_brightness_gradient = list(range(white_top, white_bottom + 1))
-
-        # Stretch gradients to match window image size
-        horizontal_brightness_gradient = stretch_to(horizontal_brightness_gradient,
-                                                    window_image.shape[1])
-        vertical_brightness_gradient = stretch_to(vertical_brightness_gradient,
-                                                  window_image.shape[0])
-
-        # Tile gradients to 2D images
-        horizontal_brightness_gradient = np.array([horizontal_brightness_gradient], dtype=window_image.dtype)
-        horizontal_brightness_gradient = np.tile(horizontal_brightness_gradient, (window_image.shape[0], 1))
-        vertical_brightness_gradient = np.array([vertical_brightness_gradient], dtype=window_image.dtype)
-        vertical_brightness_gradient = np.tile(vertical_brightness_gradient, (window_image.shape[1], 1))
-        vertical_brightness_gradient = np.transpose(vertical_brightness_gradient)
-
-        # Combine gradients
-        brightness_gradient = cv2.addWeighted(horizontal_brightness_gradient, 0.5,
-                                              vertical_brightness_gradient, 0.5, 0.)
-
-        # Apply blur
-        # brightness_gradient = cv2.GaussianBlur(brightness_gradient, (49, 49), 0)
-
-        # Add brightness gradient
-        window_image_hsv = cv2.cvtColor(window_image, cv2.COLOR_BGR2HSV)
-        window_image_hsv[:, :, 2] = cv2.bitwise_and(window_image_hsv[:, :, 2], brightness_gradient)
-
-        return cv2.cvtColor(window_image_hsv, cv2.COLOR_HSV2BGR)
-
     def set_preview_mode(self, preview_mode: int):
         self.preview_mode = preview_mode
 
@@ -700,18 +838,28 @@ class OpenCVHandler:
         # Preview output
         if self.preview_mode == PREVIEW_OUTPUT:
             preview_image = self.final_output_frame
+
+        # Preview window
+        elif self.preview_mode == PREVIEW_WINDOW:
+            preview_image = self.window_image
+
         # Preview source
         else:
             preview_image = self.input_frame
 
         try:
             # Convert to pixmap and resize
-            pixmap = QPixmap.fromImage(
-                qimage2ndarray.array2qimage(
-                    cv2.resize(
-                        cv2.cvtColor(preview_image, cv2.COLOR_BGR2RGB),
-                        (self.preview_label.size().width(), self.preview_label.size().height()),
-                        interpolation=cv2.INTER_NEAREST)))
+            # pixmap = QPixmap.fromImage(
+            #     qimage2ndarray.array2qimage(
+            #         cv2.resize(
+            #            cv2.cvtColor(preview_image, cv2.COLOR_BGR2RGB),
+            #           (self.preview_label.size().width(), self.preview_label.size().height()),
+            #            interpolation=cv2.INTER_NEAREST)))
+
+            pixmap = QPixmap.fromImage(qimage2ndarray.array2qimage(
+                resize_keep_ratio(cv2.cvtColor(preview_image, cv2.COLOR_BGR2RGB),
+                                  self.preview_label.size().width(),
+                                  self.preview_label.size().height())))
 
             # Push to preview
             self.update_preview.emit(pixmap)

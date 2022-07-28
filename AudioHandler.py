@@ -34,6 +34,7 @@ AUDIO_CHANNELS = 1
 AUDIO_CHUNK_SIZE = 2048 * AUDIO_CHANNELS
 AUDIO_FORMAT = pyaudio.paInt16
 AUDIO_NP_FORMAT = np.int16
+AUDIO_WIDTH = 2
 
 DEVICE_TYPE_INPUT = 0
 DEVICE_TYPE_OUTPUT = 1
@@ -41,6 +42,11 @@ DEVICE_TYPE_OUTPUT = 1
 
 class AudioHandler:
     def __init__(self, settings_handler: SettingsHandler, update_audio_rms: QtCore.pyqtSignal):
+        """
+        Initializes AudioHandler class
+        :param settings_handler: SettingsHandler class
+        :param update_audio_rms: qt signal for updating progress bar
+        """
         self.settings_handler = settings_handler
         self.update_audio_rms = update_audio_rms
 
@@ -51,6 +57,11 @@ class AudioHandler:
         self.audio_thread_running = False
 
     def get_device_list(self, device_type: int):
+        """
+        Gets list of device names
+        :param device_type: DEVICE_TYPE_INPUT or DEVICE_TYPE_OUTPUT
+        :return:
+        """
         devices = []
         try:
             info = self.py_audio.get_host_api_info_by_index(0)
@@ -68,6 +79,11 @@ class AudioHandler:
         return devices
 
     def get_device_index_by_name(self, device_name: str):
+        """
+        Gets device index by it's name
+        :param device_name: name of device from get_device_list()
+        :return:
+        """
         try:
             info = self.py_audio.get_host_api_info_by_index(0)
             device_count = info.get("deviceCount")
@@ -83,6 +99,10 @@ class AudioHandler:
         return -1
 
     def open_input_device(self):
+        """
+        Opens input device
+        :return:
+        """
         if self.input_stream is None:
             try:
                 device_name = str(self.settings_handler.settings["audio_input_device_name"])
@@ -110,6 +130,10 @@ class AudioHandler:
         return False
 
     def close_input_device(self):
+        """
+        Closes input device
+        :return:
+        """
         if self.input_stream is not None:
             try:
                 self.input_stream.stop_stream()
@@ -120,6 +144,9 @@ class AudioHandler:
                 logging.error("Can't close input device")
 
     def is_input_device_opened(self):
+        """
+        :return: true if input device is opened
+        """
         if self.input_stream is not None:
             try:
                 return self.input_stream.is_active()
@@ -129,6 +156,10 @@ class AudioHandler:
             return False
 
     def open_output_device(self):
+        """
+        Opens output device
+        :return:
+        """
         if self.output_stream is None:
             try:
                 device_name = str(self.settings_handler.settings["audio_output_device_name"])
@@ -156,6 +187,10 @@ class AudioHandler:
         return False
 
     def close_output_device(self):
+        """
+        Closes output device
+        :return:
+        """
         if self.output_stream is not None:
             try:
                 self.output_stream.stop_stream()
@@ -166,6 +201,9 @@ class AudioHandler:
                 logging.error("Can't close output device")
 
     def is_output_device_opened(self):
+        """
+        :return: true if output device is opened
+        """
         if self.output_stream is not None:
             try:
                 return self.output_stream.is_active()
@@ -175,13 +213,23 @@ class AudioHandler:
             return False
 
     def start_main_thread(self):
+        """
+        Start main audio thread loop as background thread
+        :return:
+        """
         self.audio_thread_running = True
         thread = threading.Thread(target=self.audio_thread)
         thread.start()
         logging.info("Audio Thread: " + thread.getName())
 
     def audio_thread(self):
+        """
+        Main loop
+        :return:
+        """
+        # Timer for updating volume
         update_audio_timer = time.time()
+
         while self.audio_thread_running:
             try:
                 # Read input device chunk
@@ -208,7 +256,7 @@ class AudioHandler:
                     try:
                         if time.time() - update_audio_timer >= 0.033:
                             # Measure volume in dB
-                            volume_rms = 20 * math.log10(audioop.rms(output_data, 2))
+                            volume_rms = 20 * math.log10(audioop.rms(output_data, AUDIO_WIDTH))
                             if volume_rms > 100:
                                 volume_rms = 100
 

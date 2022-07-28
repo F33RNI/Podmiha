@@ -39,6 +39,8 @@ from cv2 import aruco
 
 import winguiauto
 
+VIDEO_NOISE_FILE = "noise.avi"
+
 PREVIEW_OUTPUT = 0
 PREVIEW_WINDOW = 1
 PREVIEW_SOURCE = 2
@@ -454,7 +456,7 @@ class OpenCVHandler:
         flicker_key_frame_1 = None
         flicker_key_frame_2 = None
 
-        noise = cv2.VideoCapture("noise.avi")
+        noise = cv2.VideoCapture(VIDEO_NOISE_FILE)
 
         while self.opencv_thread_running:
             try:

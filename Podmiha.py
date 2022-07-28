@@ -20,66 +20,35 @@
 """
 import ctypes
 import logging
-import math
 import os
 import sys
-import threading
-import time
 
-import PyQt5
-import cv2
-import imutils
-import psutil as psutil
-import pyvirtualcam
-import qimage2ndarray
-import win32com
-from PyQt5 import uic
-from PyQt5.QtCore import QUrl, pyqtSignal, QTimer
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTableWidgetItem, QHeaderView, QVBoxLayout, QWidget, QMessageBox
 import numpy as np
-from PyQt5 import uic, QtGui, Qt, QtCore
-from PyQt5.QtGui import QPen, QColor
-from PyQt5 import uic, QtGui, Qt, QtCore
-import csv
-import json
+import psutil
+import win32gui
 from PIL import ImageGrab
-import win32api
-from cv2 import aruco
+from PyQt5 import uic, QtGui, QtCore
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 
+import AudioHandler
 import Bar
 import Flicker
-import winguiauto
-import win32gui
-import win32con
-
-import Marker
-import SettingsHandler
-import Logger
-import OpenCVHandler
 import HTTPStreamer
+import Logger
+import Marker
+import OpenCVHandler
+import SettingsHandler
+import winguiauto
 
 # https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.3
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
-# - TODO: Записать шум отдельным файлом FULLHD и брать из него
-# - TODO: Добавить рескейлинг + JPEG артифакты (кодировать в JPEG)
-# TODO: сделать решулировки яркости и контрастности
+# TODO: сделать регулировки яркости и контрастности
 # TODO: сделать вывод в RTSP стрим (для виртуалки)
-# - TODO: добавить размытие
-# - TODO: сделать глобальный выход при закрытии + спрашивать подтверждение на выход
 # ? TODO: сделать размыливание границ
-# - TODO: попробовать сделать просто поиск черной рамки экрана (добавить белую рамку)
-# - TODO: пофиксить кадр при отключении камеры
-# - TODO: определять яркость не через warp а рисуя всё что не маркер черным и беря max
 # TODO: добавить фильтрацию кординат маркеров
-# - TODO: шум не ресайзить а просто кропить
-# - TODO: добавить контроль времени кадра
-# - TODO: попробовать ИНВЕРТИРОВАТЬ маркеры
-# ? TODO: сделать переключение между градиентом и просто срежней яркостью
-# - TODO: фейк миганием экрана
-# - TODO: сделать быстрое переключение между режимами фейка
-# TODO: добавить возможность просто отобразить нужное окно на весь экран и при нажатии на эту картинку (или ещё что-то) включется ARUCO
+# TODO: сделать свораяивание в трей
 
 
 APP_VERSION = "1.0.0"
@@ -92,6 +61,7 @@ UPDATE_SETTINGS_AFTER_MS = 500
 class Window(QMainWindow):
     update_logs = QtCore.pyqtSignal(str)  # QtCore.Signal(str)
     update_preview = QtCore.pyqtSignal(QPixmap)  # QtCore.Signal(QPixmap)
+    update_audio_rms = QtCore.pyqtSignal(int)  # QtCore.Signal(int)
 
     def __init__(self):
         super(Window, self).__init__()
@@ -117,6 +87,7 @@ class Window(QMainWindow):
         # Connect signals
         self.update_logs.connect(self.log.appendPlainText)
         self.update_preview.connect(self.preview.setPixmap)
+        self.update_audio_rms.connect(self.audio_output_level_progress.setValue)
 
         # Connect buttons
         self.camera_btn_mode_open = True
@@ -126,6 +97,7 @@ class Window(QMainWindow):
         self.input_image_mode.clicked.connect(self.change_preview_mode)
         self.window_image_mode.clicked.connect(self.change_preview_mode)
         self.output_image_mode.clicked.connect(self.change_preview_mode)
+        self.btn_audio_open_close.clicked.connect(self.audio_open_close)
 
         # Initialize logger
         self.setup_logger()
@@ -141,6 +113,9 @@ class Window(QMainWindow):
         # Initialize opencv class
         self.opencv_handler = OpenCVHandler.OpenCVHandler(self.settings_handler, self.http_streamer, self.flicker,
                                                           self.update_preview, self.preview)
+
+        # Initialize AudioHandler class
+        self.audio_handler = AudioHandler.AudioHandler(self.settings_handler, self.update_audio_rms)
 
         # Show GUI
         self.show()
@@ -204,6 +179,11 @@ class Window(QMainWindow):
         self.http_server_ip.textChanged.connect(self.update_settings)
         self.http_server_port.valueChanged.connect(self.update_settings)
         self.jpeg_quality.valueChanged.connect(self.update_settings)
+        self.audio_input_device_name.currentTextChanged.connect(self.update_settings)
+        self.audio_output_device_name.currentTextChanged.connect(self.update_settings)
+        self.audio_sample_rate.valueChanged.connect(self.update_settings)
+        self.audio_noise_amount.valueChanged.connect(self.update_settings)
+
         self.output_width.valueChanged.connect(self.resize_output_width)
         self.output_height.valueChanged.connect(self.resize_output_height)
 
@@ -215,6 +195,9 @@ class Window(QMainWindow):
 
         # Start OpenCV thread
         self.opencv_handler.start_opencv_thread()
+
+        # Start audio thread
+        self.audio_handler.start_main_thread()
 
         # Update preview mode
         self.change_preview_mode()
@@ -269,7 +252,7 @@ class Window(QMainWindow):
             self.id_br.setValue(int(self.settings_handler.settings["aruco_ids"][2]))
             self.id_bl.setValue(int(self.settings_handler.settings["aruco_ids"][3]))
 
-            # Output
+            # Video output
             self.virtual_camera_enabled.setChecked(self.settings_handler.settings["virtual_camera_enabled"])
             self.http_stream_enabled.setChecked(self.settings_handler.settings["http_stream_enabled"])
             self.output_width.setValue(int(self.settings_handler.settings["output_size"][0]))
@@ -279,6 +262,11 @@ class Window(QMainWindow):
             self.http_server_ip.setText(self.settings_handler.settings["http_server_ip"])
             self.http_server_port.setValue(int(self.settings_handler.settings["http_server_port"]))
             self.jpeg_quality.setValue(int(self.settings_handler.settings["jpeg_quality"]))
+
+            # Audio
+            self.refresh_audio_devices()
+            self.audio_sample_rate.setValue(int(self.settings_handler.settings["audio_sample_rate"]))
+            self.audio_noise_amount.setValue(int(self.settings_handler.settings["audio_noise_amount"]))
 
         except Exception as e:
             logging.exception(e)
@@ -339,7 +327,7 @@ class Window(QMainWindow):
         self.settings_handler.settings["aruco_ids"][2] = int(self.id_br.value())
         self.settings_handler.settings["aruco_ids"][3] = int(self.id_bl.value())
 
-        # Output
+        # Video output
         self.settings_handler.settings["virtual_camera_enabled"] = self.virtual_camera_enabled.isChecked()
         self.settings_handler.settings["http_stream_enabled"] = self.http_stream_enabled.isChecked()
         self.settings_handler.settings["output_size"][0] = int(self.output_width.value())
@@ -349,6 +337,12 @@ class Window(QMainWindow):
         self.settings_handler.settings["http_server_ip"] = self.http_server_ip.text()
         self.settings_handler.settings["http_server_port"] = int(self.http_server_port.value())
         self.settings_handler.settings["jpeg_quality"] = int(self.jpeg_quality.value())
+
+        # Audio
+        self.settings_handler.settings["audio_input_device_name"] = str(self.audio_input_device_name.currentText())
+        self.settings_handler.settings["audio_output_device_name"] = str(self.audio_output_device_name.currentText())
+        self.settings_handler.settings["audio_sample_rate"] = int(self.audio_sample_rate.value())
+        self.settings_handler.settings["audio_noise_amount"] = int(self.audio_noise_amount.value())
 
         # Write new settings to file
         self.settings_handler.write_to_file()
@@ -466,6 +460,50 @@ class Window(QMainWindow):
             self.windows_titles.setCurrentText(window_title)
         elif len(self.available_windows_titles) > 0:
             self.windows_titles.setCurrentText(self.available_windows_titles[0])
+
+    def refresh_audio_devices(self):
+        # Input device
+        self.audio_input_device_name.clear()
+        input_devices = self.audio_handler.get_device_list(AudioHandler.DEVICE_TYPE_INPUT)
+        for input_device in input_devices:
+            self.audio_input_device_name.addItem(str(input_device))
+        settings_input_device = str(self.settings_handler.settings["audio_input_device_name"])
+        if len(settings_input_device) > 0 and settings_input_device in input_devices:
+            self.audio_input_device_name.setCurrentText(settings_input_device)
+        elif len(input_devices) > 0:
+            self.audio_input_device_name.setCurrentText(str(input_devices[0]))
+
+        # Output device
+        self.audio_output_device_name.clear()
+        output_devices = self.audio_handler.get_device_list(AudioHandler.DEVICE_TYPE_OUTPUT)
+        for output_device in output_devices:
+            self.audio_output_device_name.addItem(str(output_device))
+        settings_output_device = str(self.settings_handler.settings["audio_output_device_name"])
+        if len(settings_output_device) > 0 and settings_output_device in output_devices:
+            self.audio_output_device_name.setCurrentText(settings_output_device)
+        elif len(output_devices) > 0:
+            self.audio_output_device_name.setCurrentText(str(output_devices[0]))
+
+    def audio_open_close(self):
+        # Open
+        if not self.btn_audio_open_close.text() == "Close audio devices":
+            if not self.audio_handler.is_input_device_opened():
+                self.audio_handler.open_input_device()
+            if not self.audio_handler.is_output_device_opened():
+                self.audio_handler.open_output_device()
+            self.audio_input_device_name.setEnabled(False)
+            self.audio_output_device_name.setEnabled(False)
+            self.audio_sample_rate.setEnabled(False)
+            self.btn_audio_open_close.setText("Close audio devices")
+
+        # Close
+        else:
+            self.audio_handler.close_input_device()
+            self.audio_handler.close_output_device()
+            self.audio_input_device_name.setEnabled(True)
+            self.audio_output_device_name.setEnabled(True)
+            self.audio_sample_rate.setEnabled(True)
+            self.btn_audio_open_close.setText("Open audio devices")
 
     def get_windows_list(self):
         """
@@ -603,7 +641,10 @@ if __name__ == '__main__':
     # os.environ["PATH"] += current_dir + "\\ffmpeg-2022-07-21-git-f7d510b33f-essentials_build\\presets"
 
     # Start app
-    app = QApplication(sys.argv)
-    app.setStyle('fusion')
-    win = Window()
-    sys.exit(app.exec_())
+    try:
+        app = QApplication(sys.argv)
+        app.setStyle('fusion')
+        win = Window()
+        app.exec_()
+    except Exception as e:
+        print(e)

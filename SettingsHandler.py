@@ -52,7 +52,11 @@ SETTINGS_DEFAULT = {
     "output_noise_amount": 0.,
     "http_server_ip": "localhost",
     "http_server_port": 8080,
-    "jpeg_quality": 50
+    "jpeg_quality": 50,
+    "audio_input_device_name": "",
+    "audio_output_device_name": "",
+    "audio_sample_rate": 32000,
+    "audio_noise_amount": 0
     }
 
 

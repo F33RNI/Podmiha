@@ -45,13 +45,15 @@ import TelegramHandler
 import VirtualCamera
 import winguiauto
 
+
+# TODO: Add foot controller
+# TODO: Add ARUco filtration
+# TODO: Increase speed of edge blurring (and enable it)
+# TODO: Add brightness / contrast adjust of output image
+# TODO: Add RTSP stream
+
 # https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.3
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
-# TODO: сделать регулировки яркости и контрастности
-# TODO: сделать вывод в RTSP стрим (для виртуалки)
-# ? TODO: сделать размыливание границ
-# TODO: добавить фильтрацию кординат маркеров
-# TODO: сделать свораяивание в трей
 
 
 APP_VERSION = "1.0.0"

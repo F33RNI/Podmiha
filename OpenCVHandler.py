@@ -37,6 +37,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication
 from cv2 import aruco
 
+import Controller
 import winguiauto
 
 VIDEO_NOISE_FILE = "noise.avi"
@@ -253,7 +254,7 @@ def calculate_and_apply_brightness(marker_tl, marker_tr, marker_br, marker_bl, i
 
 
 class OpenCVHandler:
-    def __init__(self, settings_handler, http_stream, flicker,
+    def __init__(self, settings_handler, http_stream, virtual_camera, flicker, controller,
                  update_preview: QtCore.pyqtSignal, preview_label: PyQt5.QtWidgets.QLabel):
         """
         Initializes OpenCVHandler class
@@ -264,7 +265,9 @@ class OpenCVHandler:
         """
         self.settings_handler = settings_handler
         self.http_stream = http_stream
+        self.virtual_camera = virtual_camera
         self.flicker = flicker
+        self.controller = controller
         self.update_preview = update_preview
         self.preview_label = preview_label
 
@@ -309,6 +312,7 @@ class OpenCVHandler:
         self.window_image = None
         self.frame_blending = False
         self.brightness_gradient_enabled = False
+        self.pause_output = False
 
         # Use 4x4 50 ARUco dictionary
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
@@ -317,9 +321,6 @@ class OpenCVHandler:
         # TODO: Improve this
         self.parameters = cv2.aruco.DetectorParameters_create()
         self.parameters.adaptiveThreshConstant = 10
-
-    def set_camera_capture_allowed(self, camera_capture_allowed):
-        self.camera_capture_allowed = camera_capture_allowed
 
     def get_final_output_frame(self):
         return self.final_output_frame
@@ -333,6 +334,7 @@ class OpenCVHandler:
         :return:
         """
         self.opencv_thread_running = True
+        self.pause_output = True
         thread = threading.Thread(target=self.opencv_thread)
         thread.start()
         logging.info("OpenCV Thread: " + thread.getName())
@@ -388,6 +390,9 @@ class OpenCVHandler:
         # change_window_state(self.window_title, win32con.SW_SHOWMAXIMIZED)
 
     def open_camera(self):
+        # Pause camera
+        self.pause_output = True
+
         try:
             # Update variables from settings
             self.update_from_settings()
@@ -418,25 +423,25 @@ class OpenCVHandler:
             # Disable auto white balance
             self.video_capture.set(cv2.CAP_PROP_AUTO_WB, 0)
 
+            # Read first frame
+            ret, _ = self.video_capture.read()
+            if ret:
+                self.camera_capture_allowed = True
+            else:
+                logging.error("Can't read camera frame!")
+
         except Exception as e:
             logging.exception(e)
-
-    def start_camera_output(self):
-        cam = pyvirtualcam.Camera(width=1280, height=720, fps=20)
-
-        print(f'Using virtual camera: {cam.device}')
-
-        frame = np.zeros((cam.height, cam.width, 3), np.uint8)  # RGB
-        while True:
-            frame[:] = cam.frames_sent % 255  # grayscale animation
-            cam.send(frame)
-            cam.sleep_until_next_frame()
 
     def close_camera(self):
         """
         Stops source camera
         :return:
         """
+        # Pause camera
+        self.pause_output = True
+
+        # Stop capturing frames
         self.camera_capture_allowed = False
         try:
             self.video_capture.release()
@@ -468,6 +473,9 @@ class OpenCVHandler:
 
                 # Record time
                 time_started = time.time()
+
+                # Pause camera
+                self.pause_output = self.controller.get_request_camera_pause()
 
                 # Grab window image
                 # noinspection PyBroadException
@@ -519,7 +527,8 @@ class OpenCVHandler:
                 # Grab the current camera frame
                 # noinspection PyBroadException
                 try:
-                    if self.camera_capture_allowed and self.video_capture.isOpened() and not error:
+                    if self.camera_capture_allowed \
+                            and self.video_capture is not None and self.video_capture.isOpened() and not error:
                         if self.fake_mode == FAKE_MODE_FLICKER and self.fake_screen:
                             # Count flicker frames
                             self.flick_counter += 1
@@ -588,8 +597,12 @@ class OpenCVHandler:
 
                     # No camera image
                     else:
+                        # Set error flag
+                        error = True
+
                         # Stop flicking
-                        self.flicker.flick_frame_stop()
+                        if self.fake_mode == FAKE_MODE_FLICKER:
+                            self.flicker.flick_frame_stop()
 
                         # Reset flicker variables
                         flicker_key_frame_1 = None
@@ -806,13 +819,24 @@ class OpenCVHandler:
                     except:
                         pass
 
-                # Make final image
-                if not error:
+                # Output enabled
+                if not error and not self.pause_output:
+                    # Make final image
                     self.final_output_frame = output_frame.copy()
+                    # Set active state
+                    self.controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
+
+                # Paused
+                elif not error:
+                    self.controller.update_state_camera(Controller.CAMERA_STATE_PAUSED)
+
+                # Error
+                else:
+                    self.controller.update_state_camera(Controller.CAMERA_STATE_ERROR)
 
                 # Replace with black if none
                 if self.final_output_frame is None:
-                    self.final_output_frame = black_frame.copy()
+                    self.final_output_frame = cv2.resize(black_frame, (self.output_width, self.output_height))
 
                 # Send final image
                 self.push_output_image()
@@ -868,5 +892,8 @@ class OpenCVHandler:
 
             # Push to http server
             self.http_stream.set_frame(self.final_output_frame)
+
+            # Virtual camera
+            self.virtual_camera.set_frame(self.final_output_frame)
         except Exception as e:
             logging.exception(e)

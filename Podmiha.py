@@ -42,6 +42,7 @@ import Marker
 import OpenCVHandler
 import SettingsHandler
 import TelegramHandler
+import VirtualCamera
 import winguiauto
 
 # https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.3
@@ -64,6 +65,8 @@ class Window(QMainWindow):
     update_logs = QtCore.pyqtSignal(str)  # QtCore.Signal(str)
     update_preview = QtCore.pyqtSignal(QPixmap)  # QtCore.Signal(QPixmap)
     update_audio_rms = QtCore.pyqtSignal(int)  # QtCore.Signal(int)
+    update_show_main_gui = QtCore.pyqtSignal()  # QtCore.Signal()
+    update_show_fullscreen = QtCore.pyqtSignal()  # QtCore.Signal()
 
     def __init__(self):
         super(Window, self).__init__()
@@ -93,6 +96,8 @@ class Window(QMainWindow):
         self.update_logs.connect(self.log.appendPlainText)
         self.update_preview.connect(self.preview.setPixmap)
         self.update_audio_rms.connect(self.audio_output_level_progress.setValue)
+        self.update_show_main_gui.connect(self.showNormal)
+        self.update_show_fullscreen.connect(self.show_fullscreen)
 
         # Connect buttons
         self.camera_btn_mode_open = True
@@ -119,14 +124,19 @@ class Window(QMainWindow):
         self.telegram_handler = TelegramHandler.TelegramHandler(self.settings_handler)
 
         # Initialize controller
-        self.controller = Controller.Controller(self.telegram_handler)
+        self.controller = Controller.Controller(self.telegram_handler,
+                                                self.update_show_main_gui, self.update_show_fullscreen)
+
+        # Initialize VirtualCamera class
+        self.virtual_camera = VirtualCamera.VirtualCamera(self.settings_handler)
 
         # Initialize opencv class
-        self.opencv_handler = OpenCVHandler.OpenCVHandler(self.settings_handler, self.http_streamer, self.flicker,
+        self.opencv_handler = OpenCVHandler.OpenCVHandler(self.settings_handler, self.http_streamer,
+                                                          self.virtual_camera, self.flicker, self.controller,
                                                           self.update_preview, self.preview)
 
         # Initialize AudioHandler class
-        self.audio_handler = AudioHandler.AudioHandler(self.settings_handler, self.update_audio_rms)
+        self.audio_handler = AudioHandler.AudioHandler(self.settings_handler, self.controller, self.update_audio_rms)
 
         # Parse settings
         self.settings_handler.read_from_file()
@@ -465,6 +475,18 @@ class Window(QMainWindow):
         # OpenCVHandler
         self.opencv_handler.update_from_settings()
 
+        # Virtual camera
+        if self.settings_handler.settings["virtual_camera_enabled"]:
+            self.output_width.setEnabled(False)
+            self.output_height.setEnabled(False)
+            self.virtual_camera.open_camera()
+            self.virtual_camera_driver.setText(str(self.virtual_camera.get_virtual_camera_driver()))
+        else:
+            self.virtual_camera.close_camera()
+            self.output_width.setEnabled(True)
+            self.output_height.setEnabled(True)
+            self.virtual_camera_driver.setText("")
+
         # HTTP stream
         if self.settings_handler.settings["http_stream_enabled"]:
             self.http_server_ip.setEnabled(False)
@@ -612,7 +634,6 @@ class Window(QMainWindow):
             self.use_dshow.setEnabled(False)
             self.btn_open_camera.setText("Close camera")
             self.opencv_handler.open_camera()
-            self.opencv_handler.set_camera_capture_allowed(True)
         else:
             self.camera_btn_mode_open = True
             self.opencv_handler.close_camera()
@@ -665,6 +686,14 @@ class Window(QMainWindow):
         # Stay in app
         else:
             event.ignore()
+
+    def hideEvent(self, a0: QtGui.QHideEvent):
+        """
+        Hides main gui (reopen from controller)
+        :param a0:
+        :return:
+        """
+        self.hide()
 
 
 if __name__ == "__main__":

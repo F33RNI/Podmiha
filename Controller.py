@@ -53,7 +53,8 @@ class Controller(QWidget):
     update_camera_icon = QtCore.pyqtSignal(QIcon)  # QtCore.Signal(QIcon)
     update_microphone_icon = QtCore.pyqtSignal(QIcon)  # QtCore.Signal(QIcon)
 
-    def __init__(self, telegram_handler: TelegramHandler):
+    def __init__(self, telegram_handler: TelegramHandler, update_show_main_gui: QtCore.pyqtSignal,
+                 update_show_fullscreen: QtCore.pyqtSignal):
         """
         Initializes Controller class
         """
@@ -62,11 +63,19 @@ class Controller(QWidget):
         # TelegramHandler class for sending +, - and screenshot
         self.telegram_handler = telegram_handler
 
+        # Signal for showing main gui
+        self.update_show_main_gui = update_show_main_gui
+
+        # Signal for showing screenshot of fullscreen
+        self.update_show_fullscreen = update_show_fullscreen
+
         # Internal variables
         self.camera_current_state = CAMERA_STATE_ERROR
         self.microphone_current_state = MICROPHONE_STATE_ERROR
         self.old_pos = QPoint(0, 0)
         self.timer = QTimer()
+        self.request_camera_pause = True
+        self.request_microphone_pause = True
 
         # Icons
         # Camera
@@ -132,10 +141,13 @@ class Controller(QWidget):
         self.update_microphone_icon.connect(self.btn_microphone_control.setIcon)
 
         # Connect buttons
-        # self.camera_control_btn.clicked.connect(self.camera_action)
+        self.btn_camera_control.clicked.connect(self.camera_control)
+        self.btn_microphone_control.clicked.connect(self.microphone_control)
+        self.btn_show_screenshot.clicked.connect(self.update_show_fullscreen)
         self.btn_send_plus.clicked.connect(self.telegram_handler.send_plus)
         self.btn_send_minus.clicked.connect(self.telegram_handler.send_minus)
         self.btn_send_screenshot.clicked.connect(self.telegram_handler.send_screenshot)
+        self.btn_show_gui.clicked.connect(self.update_show_main_gui)
 
         # Create HBoxLayout and add buttons to it
         layout = QHBoxLayout()
@@ -192,9 +204,23 @@ class Controller(QWidget):
         self.move(self.x() + delta.x(), self.y() + delta.y())
         self.old_pos = event.globalPos()
 
-    def camera_action(self):
+    def get_request_camera_pause(self):
+        return self.request_camera_pause
 
-        print(123)
+    def get_request_microphone_pause(self):
+        return self.request_microphone_pause
+
+    def camera_control(self):
+        if not self.camera_current_state == CAMERA_STATE_PAUSED:
+            self.request_camera_pause = True
+        else:
+            self.request_camera_pause = False
+
+    def microphone_control(self):
+        if not self.microphone_current_state == MICROPHONE_STATE_PAUSED:
+            self.request_microphone_pause = True
+        else:
+            self.request_microphone_pause = False
 
     def update_state_camera(self, new_state: int):
         """

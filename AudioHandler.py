@@ -29,6 +29,7 @@ import pyaudio
 from PyQt5 import QtCore
 
 import SettingsHandler
+import Controller
 
 AUDIO_CHANNELS = 1
 AUDIO_CHUNK_SIZE = 2048 * AUDIO_CHANNELS
@@ -41,13 +42,15 @@ DEVICE_TYPE_OUTPUT = 1
 
 
 class AudioHandler:
-    def __init__(self, settings_handler: SettingsHandler, update_audio_rms: QtCore.pyqtSignal):
+    def __init__(self, settings_handler: SettingsHandler, controller: Controller, update_audio_rms: QtCore.pyqtSignal):
         """
         Initializes AudioHandler class
         :param settings_handler: SettingsHandler class
+        :param controller: Controller class
         :param update_audio_rms: qt signal for updating progress bar
         """
         self.settings_handler = settings_handler
+        self.controller = controller
         self.update_audio_rms = update_audio_rms
 
         self.py_audio = pyaudio.PyAudio()
@@ -252,26 +255,36 @@ class AudioHandler:
                     # Convert back to bytes
                     output_data = output_data_np.tobytes()
 
+                    # Send output buffer
+                    if not self.controller.get_request_microphone_pause():
+                        self.output_stream.write(output_data)
+                        self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ACTIVE)
+                    else:
+                        self.controller.update_state_microphone(Controller.MICROPHONE_STATE_PAUSED)
+
                     # Send volume at ~30FPS
                     try:
                         if time.time() - update_audio_timer >= 0.033:
-                            # Measure volume in dB
-                            volume_rms = 20 * math.log10(audioop.rms(output_data, AUDIO_WIDTH))
-                            if volume_rms > 100:
-                                volume_rms = 100
+                            if not self.controller.get_request_microphone_pause():
+                                # Measure volume in dB
+                                volume_rms = 20 * math.log10(audioop.rms(output_data, AUDIO_WIDTH))
+                                if volume_rms > 100:
+                                    volume_rms = 100
 
-                            # Send volume
-                            self.update_audio_rms.emit(int(volume_rms))
+                                # Send volume
+                                self.update_audio_rms.emit(int(volume_rms))
+                            else:
+                                # Send 0 volume
+                                self.update_audio_rms.emit(0)
                     except:
                         pass
-
-                    # Send output buffer
-                    self.output_stream.write(output_data)
                 else:
+                    self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR)
                     time.sleep(0.1)
 
             except Exception as e:
                 logging.exception(e)
+                self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR)
                 time.sleep(0.1)
 
         logging.warning("Audio loop exited")

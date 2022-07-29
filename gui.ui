@@ -45,9 +45,9 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-1459</y>
+         <y>-1013</y>
          <width>301</width>
-         <height>1809</height>
+         <height>1751</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -762,13 +762,6 @@
          </layout>
         </item>
         <item>
-         <widget class="QCheckBox" name="video_paused">
-          <property name="text">
-           <string>Paused</string>
-          </property>
-         </widget>
-        </item>
-        <item>
          <layout class="QHBoxLayout" name="horizontalLayout_17">
           <item>
            <widget class="QLabel" name="label_25">
@@ -1053,13 +1046,6 @@
           </property>
           <property name="text">
            <string>Open audio devices</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="audio_paused">
-          <property name="text">
-           <string>Paused</string>
           </property>
          </widget>
         </item>
@@ -1422,7 +1408,7 @@
  <connections/>
  <buttongroups>
   <buttongroup name="buttonGroup_3"/>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="buttonGroup_2"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>

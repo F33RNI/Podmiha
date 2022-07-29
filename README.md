@@ -29,3 +29,31 @@ This application will help you pass the online exam.
 - The author of the application is not responsible for unauthorized use.
 - The author of the application is not responsible for any consequences that may result from the use of this application.
 - By using the application, you automatically agree to the above
+
+## Installation and use
+
+### Installation
+
+1. Download latest release from *Releases* and unpack it. *Note: currently available only for Windows*
+2. To use virtual camera output download and install Open Broadcast Software (OBS) `https://obsproject.com/`
+3. To use microphone pause and fake noise download and install any virtual audio cable driver. For example VB-CABLE: `https://vb-audio.com/Cable/index.htm`
+4. To use virtual OS as screen replacement download any virtual machine (For example: `https://www.virtualbox.org/wiki/Downloads`) and install OS on it
+5. To use telegram messages create Bot `https://t.me/botfather`, invite it to your chat and get chat ID by inviting `https://t.me/RawDataBot` to your chat
+
+### How to use
+
+#### Screen faking
+
+1. In development...
+
+#### Microphone pause and fake noise
+
+1. In development...
+
+#### Telegram messages
+
+1. In development...
+
+#### Foot control
+
+1. In development...

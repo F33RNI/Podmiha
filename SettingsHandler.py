@@ -27,7 +27,7 @@ import os
 SETTINGS_DEFAULT = {
     "input_camera": 0,
     "use_dshow": True,
-    "input_camera_exposure": -7,
+    "input_camera_exposure": -6,
     "input_camera_exposure_auto": False,
     "input_camera_focus": 5,
     "input_camera_focus_auto": False,
@@ -56,7 +56,12 @@ SETTINGS_DEFAULT = {
     "audio_input_device_name": "",
     "audio_output_device_name": "",
     "audio_sample_rate": 32000,
-    "audio_noise_amount": 0
+    "audio_noise_amount": 0,
+    "telegram_bot_token": "",
+    "telegram_chat_id": "",
+    "telegram_bot_enabled": False,
+    "telegram_message_plus": "+",
+    "telegram_message_minus": "-"
     }
 
 

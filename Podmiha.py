@@ -34,12 +34,14 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 
 import AudioHandler
 import Bar
+import Controller
 import Flicker
 import HTTPStreamer
 import Logger
 import Marker
 import OpenCVHandler
 import SettingsHandler
+import TelegramHandler
 import winguiauto
 
 # https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.3
@@ -79,7 +81,10 @@ class Window(QMainWindow):
         self.setWindowTitle("Podmiha " + APP_VERSION)
 
         # Set icon
-        self.setWindowIcon(QtGui.QIcon("icon.png"))
+        self.setWindowIcon(QtGui.QIcon("./icons/icon.png"))
+
+        # Show GUI
+        self.show()
 
         # Initialize settings class
         self.settings_handler = SettingsHandler.SettingsHandler(SETTINGS_FILE)
@@ -110,15 +115,18 @@ class Window(QMainWindow):
         self.flicker = Flicker.Flicker(self.settings_handler)
         self.flicker.update_position([0, 0, 0, 0])
 
+        # Initialize TelegramHandler class
+        self.telegram_handler = TelegramHandler.TelegramHandler(self.settings_handler)
+
+        # Initialize controller
+        self.controller = Controller.Controller(self.telegram_handler)
+
         # Initialize opencv class
         self.opencv_handler = OpenCVHandler.OpenCVHandler(self.settings_handler, self.http_streamer, self.flicker,
                                                           self.update_preview, self.preview)
 
         # Initialize AudioHandler class
         self.audio_handler = AudioHandler.AudioHandler(self.settings_handler, self.update_audio_rms)
-
-        # Show GUI
-        self.show()
 
         # Parse settings
         self.settings_handler.read_from_file()
@@ -183,6 +191,11 @@ class Window(QMainWindow):
         self.audio_output_device_name.currentTextChanged.connect(self.update_settings)
         self.audio_sample_rate.valueChanged.connect(self.update_settings)
         self.audio_noise_amount.valueChanged.connect(self.update_settings)
+        self.telegram_bot_token.textChanged.connect(self.update_settings)
+        self.telegram_chat_id.textChanged.connect(self.update_settings)
+        self.telegram_bot_enabled.clicked.connect(self.write_settings)
+        self.telegram_message_plus.textChanged.connect(self.update_settings)
+        self.telegram_message_minus.textChanged.connect(self.update_settings)
 
         self.output_width.valueChanged.connect(self.resize_output_width)
         self.output_height.valueChanged.connect(self.resize_output_height)
@@ -192,6 +205,9 @@ class Window(QMainWindow):
 
         # Open flicker
         self.flicker.show()
+
+        # Open controller
+        self.controller.open_controller()
 
         # Start OpenCV thread
         self.opencv_handler.start_opencv_thread()
@@ -268,6 +284,13 @@ class Window(QMainWindow):
             self.audio_sample_rate.setValue(int(self.settings_handler.settings["audio_sample_rate"]))
             self.audio_noise_amount.setValue(int(self.settings_handler.settings["audio_noise_amount"]))
 
+            # Telegram
+            self.telegram_bot_token.setText(self.settings_handler.settings["telegram_bot_token"])
+            self.telegram_chat_id.setText(self.settings_handler.settings["telegram_chat_id"])
+            self.telegram_bot_enabled.setChecked(self.settings_handler.settings["telegram_bot_enabled"])
+            self.telegram_message_plus.setText(self.settings_handler.settings["telegram_message_plus"])
+            self.telegram_message_minus.setText(self.settings_handler.settings["telegram_message_minus"])
+
         except Exception as e:
             logging.exception(e)
 
@@ -334,7 +357,7 @@ class Window(QMainWindow):
         self.settings_handler.settings["output_size"][1] = int(self.output_height.value())
         self.settings_handler.settings["output_blur_radius"] = int(self.output_blur_radius.value())
         self.settings_handler.settings["output_noise_amount"] = float(self.noise_amount.value())
-        self.settings_handler.settings["http_server_ip"] = self.http_server_ip.text()
+        self.settings_handler.settings["http_server_ip"] = str(self.http_server_ip.text())
         self.settings_handler.settings["http_server_port"] = int(self.http_server_port.value())
         self.settings_handler.settings["jpeg_quality"] = int(self.jpeg_quality.value())
 
@@ -343,6 +366,13 @@ class Window(QMainWindow):
         self.settings_handler.settings["audio_output_device_name"] = str(self.audio_output_device_name.currentText())
         self.settings_handler.settings["audio_sample_rate"] = int(self.audio_sample_rate.value())
         self.settings_handler.settings["audio_noise_amount"] = int(self.audio_noise_amount.value())
+
+        # Telegram
+        self.settings_handler.settings["telegram_bot_token"] = str(self.telegram_bot_token.text())
+        self.settings_handler.settings["telegram_chat_id"] = str(self.telegram_chat_id.text())
+        self.settings_handler.settings["telegram_bot_enabled"] = self.telegram_bot_enabled.isChecked()
+        self.settings_handler.settings["telegram_message_plus"] = str(self.telegram_message_plus.text())
+        self.settings_handler.settings["telegram_message_minus"] = str(self.telegram_message_minus.text())
 
         # Write new settings to file
         self.settings_handler.write_to_file()
@@ -445,6 +475,14 @@ class Window(QMainWindow):
             self.http_streamer.stop_server()
             self.http_server_ip.setEnabled(True)
             self.http_server_port.setEnabled(True)
+
+        # Telegram bot
+        if self.settings_handler.settings["telegram_bot_enabled"]:
+            self.telegram_bot_token.setEnabled(False)
+            self.telegram_handler.start_bot()
+        else:
+            self.telegram_handler.stop_bot()
+            self.telegram_bot_token.setEnabled(True)
 
     def refresh_windows(self):
         """
@@ -558,7 +596,7 @@ class Window(QMainWindow):
         logging.getLogger().addHandler(logger)
 
         # Enable global logging
-        logging.root.setLevel(logging.NOTSET)
+        logging.root.setLevel(logging.INFO)
 
         # Print first message
         logging.info("Logs initialized")
@@ -629,7 +667,7 @@ class Window(QMainWindow):
             event.ignore()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Replace icon in taskbar
     podmiha_app_ip = "f3rni.podmiha.podmiha." + APP_VERSION
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(podmiha_app_ip)
@@ -643,7 +681,7 @@ if __name__ == '__main__':
     # Start app
     try:
         app = QApplication(sys.argv)
-        app.setStyle('fusion')
+        app.setStyle("fusion")
         win = Window()
         app.exec_()
     except Exception as e:

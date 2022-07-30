@@ -31,7 +31,12 @@ SPEC_FILE_HEADER = "import PyInstaller.config\n" \
                    "PyInstaller.config.CONF[\"workpath\"] = \"./build\"\n"
 
 # Files and folders to include in final build (dist folder)
-INCLUDE_FILES = ["icons", "Podmiha-serial-controller", "gui.ui", "noise.avi", "README.md", "LICENSE"]
+INCLUDE_FILES = ["icons",
+                 "Podmiha-serial-controller/.pio/build/nanoatmega328",
+                 "gui.ui",
+                 "noise.avi",
+                 "README.md",
+                 "LICENSE"]
 
 if __name__ == "__main__":
     pyi_command = []

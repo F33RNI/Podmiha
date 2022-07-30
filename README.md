@@ -44,16 +44,22 @@ This application will help you pass the online exam.
 
 #### Screen faking
 
-1. In development...
+1. README in development...
 
 #### Microphone pause and fake noise
 
-1. In development...
+1. README in development...
 
 #### Telegram messages
 
-1. In development...
+1. README in development...
 
 #### Foot control
 
-1. In development...
+1. README in development...
+
+<div style="width:100%;text-align:center;">
+    <p align="center">
+        <img src="Podmiha_bb.jpg" width="auto" height="400">
+    </p>
+</div>

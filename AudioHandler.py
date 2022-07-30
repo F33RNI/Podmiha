@@ -28,6 +28,7 @@ import numpy as np
 import pyaudio
 from PyQt5 import QtCore
 
+import SerialController
 import SettingsHandler
 import Controller
 
@@ -42,15 +43,18 @@ DEVICE_TYPE_OUTPUT = 1
 
 
 class AudioHandler:
-    def __init__(self, settings_handler: SettingsHandler, controller: Controller, update_audio_rms: QtCore.pyqtSignal):
+    def __init__(self, settings_handler: SettingsHandler, controller: Controller, serial_controller: SerialController,
+                 update_audio_rms: QtCore.pyqtSignal):
         """
         Initializes AudioHandler class
         :param settings_handler: SettingsHandler class
         :param controller: Controller class
+        :param serial_controller: SerialController class
         :param update_audio_rms: qt signal for updating progress bar
         """
         self.settings_handler = settings_handler
         self.controller = controller
+        self.serial_controller = serial_controller
         self.update_audio_rms = update_audio_rms
 
         self.py_audio = pyaudio.PyAudio()
@@ -58,6 +62,7 @@ class AudioHandler:
         self.output_stream = None
         self.input_output_sample_rate = 0
         self.audio_thread_running = False
+        self.pause_output = True
 
     def get_device_list(self, device_type: int):
         """
@@ -243,29 +248,62 @@ class AudioHandler:
                     # Convert to numpy array
                     input_data_np = np.fromstring(input_data_raw, dtype=AUDIO_NP_FORMAT)
 
+                    # Pause microphone
+                    if self.controller.get_request_microphone_pause() \
+                            or self.serial_controller.get_request_microphone_pause():
+                        self.pause_output = True
+                        self.controller.clear_request_microphone_pause()
+                        self.serial_controller.clear_request_microphone_pause()
+                        logging.info("Microphone paused")
+
+                    # Resume microphone
+                    if self.controller.get_request_microphone_resume() \
+                            or self.serial_controller.get_request_microphone_resume():
+                        self.pause_output = False
+                        self.controller.clear_request_microphone_resume()
+                        self.serial_controller.clear_request_microphone_resume()
+                        logging.info("Microphone resumed")
+
+                    # Initialize output
+                    output_data = None
+
                     # Add noise
                     noise_amount = self.settings_handler.settings["audio_noise_amount"]
                     if noise_amount > 0:
-                        output_data_np = np.add(input_data_np,
-                                                np.random.normal(0, noise_amount, AUDIO_CHUNK_SIZE)
-                                                .astype(AUDIO_NP_FORMAT))
-                    else:
-                        output_data_np = input_data_np
+                        noise_data_np = np.random.normal(0, noise_amount, AUDIO_CHUNK_SIZE).astype(AUDIO_NP_FORMAT)
 
-                    # Convert back to bytes
-                    output_data = output_data_np.tobytes()
+                        # Noise and paused
+                        if self.pause_output:
+                            # Send noise to output because input paused
+                            output_data = noise_data_np.tobytes()
 
-                    # Send output buffer
-                    if not self.controller.get_request_microphone_pause():
+                        # Noise and not paused
+                        else:
+                            # Send combined data
+                            output_data_np = np.add(input_data_np, noise_data_np)
+                            output_data = output_data_np.tobytes()
+
+                    # No noise and not paused
+                    elif not self.pause_output:
+                        # Send input buffer directly to output
+                        output_data = input_data_np.tobytes()
+
+                    # Send output
+                    if output_data is not None:
                         self.output_stream.write(output_data)
+
+                    # Update microphone state
+                    if not self.pause_output:
                         self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ACTIVE)
+                        self.serial_controller.update_state_microphone(Controller.MICROPHONE_STATE_ACTIVE)
                     else:
                         self.controller.update_state_microphone(Controller.MICROPHONE_STATE_PAUSED)
+                        self.serial_controller.update_state_microphone(Controller.MICROPHONE_STATE_PAUSED)
 
                     # Send volume at ~30FPS
                     try:
                         if time.time() - update_audio_timer >= 0.033:
-                            if not self.controller.get_request_microphone_pause():
+                            if output_data is not None:
                                 # Measure volume in dB
                                 volume_rms = 20 * math.log10(audioop.rms(output_data, AUDIO_WIDTH))
                                 if volume_rms > 100:
@@ -280,11 +318,13 @@ class AudioHandler:
                         pass
                 else:
                     self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR)
+                    self.serial_controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR)
                     time.sleep(0.1)
 
             except Exception as e:
                 logging.exception(e)
                 self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR)
+                self.serial_controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR)
                 time.sleep(0.1)
 
         logging.warning("Audio loop exited")

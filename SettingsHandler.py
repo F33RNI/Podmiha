@@ -61,7 +61,9 @@ SETTINGS_DEFAULT = {
     "telegram_chat_id": "",
     "telegram_bot_enabled": False,
     "telegram_message_plus": "+",
-    "telegram_message_minus": "-"
+    "telegram_message_minus": "-",
+    "serial_port_name": "",
+    "serial_port_opened": False
     }
 
 

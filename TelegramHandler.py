@@ -51,6 +51,7 @@ class TelegramHandler:
             except Exception as e:
                 logging.exception(e)
                 logging.error("Error closing Telegram bot!")
+            self.bot = None
 
     def send_plus(self):
         if self.bot is not None:

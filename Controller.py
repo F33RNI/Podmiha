@@ -76,6 +76,8 @@ class Controller(QWidget):
         self.timer = QTimer()
         self.request_camera_pause = True
         self.request_microphone_pause = True
+        self.request_camera_resume = False
+        self.request_microphone_resume = False
 
         # Icons
         # Camera
@@ -210,17 +212,49 @@ class Controller(QWidget):
     def get_request_microphone_pause(self):
         return self.request_microphone_pause
 
+    def get_request_camera_resume(self):
+        return self.request_camera_resume
+
+    def get_request_microphone_resume(self):
+        return self.request_microphone_resume
+
+    def clear_request_camera_pause(self):
+        self.request_camera_pause = False
+
+    def clear_request_microphone_pause(self):
+        self.request_microphone_pause = False
+
+    def clear_request_camera_resume(self):
+        self.request_camera_resume = False
+
+    def clear_request_microphone_resume(self):
+        self.request_microphone_resume = False
+
     def camera_control(self):
-        if not self.camera_current_state == CAMERA_STATE_PAUSED:
-            self.request_camera_pause = True
+        """
+        Toggles camera state
+        :return:
+        """
+        # Paused -> Resume
+        if self.camera_current_state == CAMERA_STATE_PAUSED:
+            self.request_camera_resume = True
+
+        # Not paused -> Pause
         else:
-            self.request_camera_pause = False
+            self.request_camera_pause = True
 
     def microphone_control(self):
-        if not self.microphone_current_state == MICROPHONE_STATE_PAUSED:
-            self.request_microphone_pause = True
+        """
+        Toggles microphone state
+        :return:
+        """
+        # Paused -> Resume
+        if self.microphone_current_state == MICROPHONE_STATE_PAUSED:
+            self.request_microphone_resume = True
+
+        # Not paused -> Pause
         else:
-            self.request_microphone_pause = False
+            self.request_microphone_pause = True
 
     def update_state_camera(self, new_state: int):
         """

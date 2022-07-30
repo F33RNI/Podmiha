@@ -26,7 +26,6 @@ import time
 import PyQt5
 import cv2
 import numpy as np
-import pyvirtualcam
 import qimage2ndarray
 import win32con
 import win32gui
@@ -254,7 +253,7 @@ def calculate_and_apply_brightness(marker_tl, marker_tr, marker_br, marker_bl, i
 
 
 class OpenCVHandler:
-    def __init__(self, settings_handler, http_stream, virtual_camera, flicker, controller,
+    def __init__(self, settings_handler, http_stream, virtual_camera, flicker, controller, serial_controller,
                  update_preview: QtCore.pyqtSignal, preview_label: PyQt5.QtWidgets.QLabel):
         """
         Initializes OpenCVHandler class
@@ -268,6 +267,7 @@ class OpenCVHandler:
         self.virtual_camera = virtual_camera
         self.flicker = flicker
         self.controller = controller
+        self.serial_controller = serial_controller
         self.update_preview = update_preview
         self.preview_label = preview_label
 
@@ -313,6 +313,10 @@ class OpenCVHandler:
         self.frame_blending = False
         self.brightness_gradient_enabled = False
         self.pause_output = False
+        self.tl_filtered = [0., 0.]
+        self.tr_filtered = [0., 0.]
+        self.br_filtered = [0., 0.]
+        self.bl_filtered = [0., 0.]
 
         # Use 4x4 50 ARUco dictionary
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
@@ -351,8 +355,8 @@ class OpenCVHandler:
         self.window_title = str(self.settings_handler.settings["window_title"])
         self.window_capture_method = int(self.settings_handler.settings["window_capture_method"])
         self.window_capture_allowed = self.settings_handler.settings["fake_screen"]
-        self.crop_top = int(self.settings_handler.settings["window_crop"][0])
-        self.crop_left = int(self.settings_handler.settings["window_crop"][1])
+        self.crop_left = int(self.settings_handler.settings["window_crop"][0])
+        self.crop_top = int(self.settings_handler.settings["window_crop"][1])
         self.crop_right = int(self.settings_handler.settings["window_crop"][2])
         self.crop_bottom = int(self.settings_handler.settings["window_crop"][3])
         self.fake_screen = self.settings_handler.settings["fake_screen"]
@@ -475,7 +479,18 @@ class OpenCVHandler:
                 time_started = time.time()
 
                 # Pause camera
-                self.pause_output = self.controller.get_request_camera_pause()
+                if self.controller.get_request_camera_pause() or self.serial_controller.get_request_camera_pause():
+                    self.pause_output = True
+                    self.controller.clear_request_camera_pause()
+                    self.serial_controller.clear_request_camera_pause()
+                    logging.info("Camera paused")
+
+                # Resume camera
+                if self.controller.get_request_camera_resume() or self.serial_controller.get_request_camera_resume():
+                    self.pause_output = False
+                    self.controller.clear_request_camera_resume()
+                    self.serial_controller.clear_request_camera_resume()
+                    logging.info("Camera resumed")
 
                 # Grab window image
                 # noinspection PyBroadException
@@ -678,6 +693,14 @@ class OpenCVHandler:
                                 br = marker_br[2]
                                 bl = marker_bl[3]
 
+                                #self.tl_filtered[0] = self.tl_filtered[0] * 0.8 + tl[0] * 0.2
+                                #self.tl_filtered[1] = self.tl_filtered[1] * 0.8 + tl[1] * 0.2
+
+                                #tl[0] = int(self.tl_filtered[0])
+                                #tl[1] = int(self.tl_filtered[1])
+
+
+
                                 # Dimensions of the frames
                                 overlay_height = self.window_image.shape[0]
                                 overlay_width = self.window_image.shape[1]
@@ -702,7 +725,8 @@ class OpenCVHandler:
                                 points_dst = np.array([tl, tr, br, bl], dtype='float32')
 
                                 # Stretch window
-                                center_x, center_y = get_center(points_dst)
+                                center_x, center_y = get_lines_intersection([tl, br], [tr, bl])
+                                # center_x, center_y = get_center(points_dst)
                                 for i in range(len(points_dst)):
                                     points_dst[i][0] = self.stretch_scale_x * (points_dst[i][0] - center_x) + center_x
                                     points_dst[i][1] = self.stretch_scale_y * (points_dst[i][1] - center_y) + center_y
@@ -825,14 +849,17 @@ class OpenCVHandler:
                     self.final_output_frame = output_frame.copy()
                     # Set active state
                     self.controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
+                    self.serial_controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
 
                 # Paused
                 elif not error:
                     self.controller.update_state_camera(Controller.CAMERA_STATE_PAUSED)
+                    self.serial_controller.update_state_camera(Controller.CAMERA_STATE_PAUSED)
 
                 # Error
                 else:
                     self.controller.update_state_camera(Controller.CAMERA_STATE_ERROR)
+                    self.serial_controller.update_state_camera(Controller.CAMERA_STATE_ERROR)
 
                 # Replace with black if none
                 if self.final_output_frame is None:

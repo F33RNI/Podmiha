@@ -40,11 +40,11 @@ import HTTPStreamer
 import Logger
 import Marker
 import OpenCVHandler
+import SerialController
 import SettingsHandler
 import TelegramHandler
 import VirtualCamera
 import winguiauto
-
 
 # TODO: Add foot controller
 # TODO: Add ARUco filtration
@@ -98,7 +98,7 @@ class Window(QMainWindow):
         self.update_logs.connect(self.log.appendPlainText)
         self.update_preview.connect(self.preview.setPixmap)
         self.update_audio_rms.connect(self.audio_output_level_progress.setValue)
-        self.update_show_main_gui.connect(self.showNormal)
+        self.update_show_main_gui.connect(self.show_main_gui)
         self.update_show_fullscreen.connect(self.show_fullscreen)
 
         # Connect buttons
@@ -110,6 +110,7 @@ class Window(QMainWindow):
         self.window_image_mode.clicked.connect(self.change_preview_mode)
         self.output_image_mode.clicked.connect(self.change_preview_mode)
         self.btn_audio_open_close.clicked.connect(self.audio_open_close)
+        self.btn_serial_controller_port_refresh.clicked.connect(self.refresh_serial_ports)
 
         # Initialize logger
         self.setup_logger()
@@ -129,16 +130,20 @@ class Window(QMainWindow):
         self.controller = Controller.Controller(self.telegram_handler,
                                                 self.update_show_main_gui, self.update_show_fullscreen)
 
+        # Initialize SerialController class
+        self.serial_controller = SerialController.SerialController(self.settings_handler, self.telegram_handler)
+
         # Initialize VirtualCamera class
         self.virtual_camera = VirtualCamera.VirtualCamera(self.settings_handler)
 
         # Initialize opencv class
         self.opencv_handler = OpenCVHandler.OpenCVHandler(self.settings_handler, self.http_streamer,
                                                           self.virtual_camera, self.flicker, self.controller,
-                                                          self.update_preview, self.preview)
+                                                          self.serial_controller, self.update_preview, self.preview)
 
         # Initialize AudioHandler class
-        self.audio_handler = AudioHandler.AudioHandler(self.settings_handler, self.controller, self.update_audio_rms)
+        self.audio_handler = AudioHandler.AudioHandler(self.settings_handler,
+                                                       self.controller, self.serial_controller, self.update_audio_rms)
 
         # Parse settings
         self.settings_handler.read_from_file()
@@ -208,6 +213,8 @@ class Window(QMainWindow):
         self.telegram_bot_enabled.clicked.connect(self.write_settings)
         self.telegram_message_plus.textChanged.connect(self.update_settings)
         self.telegram_message_minus.textChanged.connect(self.update_settings)
+        self.serial_controller_port.currentTextChanged.connect(self.update_settings)
+        self.serial_controller_connected.clicked.connect(self.write_settings)
 
         self.output_width.valueChanged.connect(self.resize_output_width)
         self.output_height.valueChanged.connect(self.resize_output_height)
@@ -229,6 +236,10 @@ class Window(QMainWindow):
 
         # Update preview mode
         self.change_preview_mode()
+
+    def show_main_gui(self):
+        self.showNormal()
+        self.raise_()
 
     def show_settings(self):
         """
@@ -302,6 +313,10 @@ class Window(QMainWindow):
             self.telegram_bot_enabled.setChecked(self.settings_handler.settings["telegram_bot_enabled"])
             self.telegram_message_plus.setText(self.settings_handler.settings["telegram_message_plus"])
             self.telegram_message_minus.setText(self.settings_handler.settings["telegram_message_minus"])
+
+            # Serial controller
+            self.refresh_serial_ports()
+            self.serial_controller_connected.setChecked(self.settings_handler.settings["serial_port_opened"])
 
         except Exception as e:
             logging.exception(e)
@@ -385,6 +400,10 @@ class Window(QMainWindow):
         self.settings_handler.settings["telegram_bot_enabled"] = self.telegram_bot_enabled.isChecked()
         self.settings_handler.settings["telegram_message_plus"] = str(self.telegram_message_plus.text())
         self.settings_handler.settings["telegram_message_minus"] = str(self.telegram_message_minus.text())
+
+        # Serial controller
+        self.settings_handler.settings["serial_port_name"] = str(self.serial_controller_port.currentText())
+        self.settings_handler.settings["serial_port_opened"] = self.serial_controller_connected.isChecked()
 
         # Write new settings to file
         self.settings_handler.write_to_file()
@@ -508,6 +527,16 @@ class Window(QMainWindow):
             self.telegram_handler.stop_bot()
             self.telegram_bot_token.setEnabled(True)
 
+        # Serial port
+        if self.settings_handler.settings["serial_port_opened"]:
+            self.serial_controller_port.setEnabled(False)
+            self.btn_serial_controller_port_refresh.setEnabled(False)
+            self.serial_controller.open_port()
+        else:
+            self.serial_controller.close_port()
+            self.serial_controller_port.setEnabled(True)
+            self.btn_serial_controller_port_refresh.setEnabled(True)
+
     def refresh_windows(self):
         """
         Updates available windows
@@ -522,6 +551,22 @@ class Window(QMainWindow):
             self.windows_titles.setCurrentText(window_title)
         elif len(self.available_windows_titles) > 0:
             self.windows_titles.setCurrentText(self.available_windows_titles[0])
+
+    def refresh_serial_ports(self):
+        """
+        Updates serial ports combo box
+        :return:
+        """
+        port_names = SerialController.get_available_ports()
+        self.serial_controller_port.clear()
+        for port_name in port_names:
+            self.serial_controller_port.addItem(port_name)
+
+        current_port = str(self.settings_handler.settings["serial_port_name"])
+        if len(current_port) > 0 and current_port in port_names:
+            self.serial_controller_port.setCurrentText(current_port)
+        elif len(port_names) > 0:
+            self.serial_controller_port.setCurrentText(port_names[0])
 
     def refresh_audio_devices(self):
         # Input device

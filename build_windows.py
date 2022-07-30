@@ -105,16 +105,15 @@ if __name__ == "__main__":
                         print("build folder deleted")
 
                     # Copy include files to it
-                    for file in os.listdir("./"):
-                        if file in INCLUDE_FILES:
-                            try:
-                                if os.path.isfile(file):
-                                    shutil.copy(file, "./dist/" + file)
-                                elif os.path.isdir(file):
-                                    shutil.copytree(file, "./dist/" + file)
-                                print("Added", file, "to dist folder")
-                            except Exception as e:
-                                print("Error copying files!", e)
+                    for file in INCLUDE_FILES:
+                        try:
+                            if os.path.isfile(file):
+                                shutil.copy(file, "./dist/" + file)
+                            elif os.path.isdir(file):
+                                shutil.copytree(file, "./dist/" + file)
+                            print("Added", file, "to dist folder")
+                        except Exception as e:
+                            print("Error copying file!", e)
 
                 else:
                     print("Error. No dist folder!")

@@ -44,22 +44,51 @@ This application will help you pass the online exam.
 
 #### Screen faking
 
-1. README in development...
+1. Select window in `Window capture` section
+2. Select fake type in `Window capture` section
+3. Select `Fake screen` Check box
+4. You can view your window in preview filed by selecting `Window`
+5. Select and open camera in `Camera` section
+6. By default, the camera **will be paused**! To turn on, press the camera button on the control panel or the button on the foot controller.
 
 #### Microphone pause and fake noise
 
-1. README in development...
+1. Select microphone and virtual cable input devices in `Audio` section
+2. Select sample rate
+3. Press `Open audio devices` button
+4. By default, the microphone **will be paused**! To turn on, press the microphone button on the control panel or the button on the foot controller.
+5. Adjust noise level. **Noise will be present even when paused**!
 
 #### Telegram messages
 
-1. README in development...
+1. Paste token into `Bot token` field in `Telegram bot` section
+2. Paste chat ID `Chat ID` field in `Telegram bot` section
+3. Select `Bot enabled` Check box
+4. In addition, you can specify the text of the messages below
+5. To send messages, press plus/minus/send screenshot buttons on control panel or buttons on foot controller
 
 #### Foot control
 
-1. README in development...
+1. Connect controller via serial port
+2. Select serial port in `Control via serial port` section
+3. Select `Connected` Check box
+
+## Foot (serial) controller
+
+You can control the camera, microphone, and send messages and screenshot hands-free.
+To do this, you need to assemble a simple circuit shown below.
+You can use any Arduino or BluePill board as a controller, etc.
 
 <div style="width:100%;text-align:center;">
     <p align="center">
         <img src="Podmiha_bb.jpg" width="auto" height="400">
     </p>
 </div>
+
+In addition to controlling, the current system status is also displayed in the following colors:
+- Camera active, microphone active: **Orange** (RGB: 40, 20, 0)
+- Camera active, microphone paused: **Red** (RGB: 40, 0, 0)
+- Camera paused, microphone active: **Yellow** (RGB: 20, 40, 0)
+- Camera paused, microphone paused: **Green** (RGB: 0, 40, 0)
+
+For example, you can fix the LED on the table, and the buttons on the floor and thus control the system

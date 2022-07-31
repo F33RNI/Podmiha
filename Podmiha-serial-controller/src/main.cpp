@@ -299,6 +299,7 @@ void serial_read_data(void) {
         if (serial_check_byte == serial_rx_buffer[2]) {
           // Reset watchdog timer
           serial_watchdog_timer = millis();
+          serial_timeout_flag = false;
 
           // Retrieve data
           current_state_camera = serial_rx_buffer[0];

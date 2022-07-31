@@ -317,14 +317,24 @@ class AudioHandler:
                     except:
                         pass
                 else:
-                    self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR)
-                    self.serial_controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR)
+                    # Update microphone state
+                    if not self.pause_output:
+                        self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR_ACTIVE)
+                        self.serial_controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR_ACTIVE)
+                    else:
+                        self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR_PAUSED)
+                        self.serial_controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR_PAUSED)
                     time.sleep(0.1)
 
             except Exception as e:
                 logging.exception(e)
-                self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR)
-                self.serial_controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR)
+                # Update microphone state
+                if not self.pause_output:
+                    self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR_ACTIVE)
+                    self.serial_controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR_ACTIVE)
+                else:
+                    self.controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR_PAUSED)
+                    self.serial_controller.update_state_microphone(Controller.MICROPHONE_STATE_ERROR_PAUSED)
                 time.sleep(0.1)
 
         logging.warning("Audio loop exited")

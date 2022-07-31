@@ -96,6 +96,8 @@ class Flicker(PyQt5.QtWidgets.QLabel):
             self.force_fullscreen_enabled = True
             # Open on fullscreen
             self.flick_frame_start(frame)
+            self.show()
+            self.raise_()
 
     def flick_frame_start(self, frame):
         if frame is not None:
@@ -114,6 +116,7 @@ class Flicker(PyQt5.QtWidgets.QLabel):
                 self.update_frame.emit(QPixmap.fromImage(qimage2ndarray.array2qimage(frame_with_sign)))
 
                 self.update_geometry.emit(self.geometry_)
+                self.raise_()
 
             except Exception as e:
                 print(e)

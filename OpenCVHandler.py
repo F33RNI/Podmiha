@@ -851,15 +851,22 @@ class OpenCVHandler:
                     self.controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
                     self.serial_controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
 
-                # Paused
-                elif not error:
-                    self.controller.update_state_camera(Controller.CAMERA_STATE_PAUSED)
-                    self.serial_controller.update_state_camera(Controller.CAMERA_STATE_PAUSED)
 
-                # Error
+                # Set current camera state
+                if error:
+                    if self.pause_output:
+                        self.controller.update_state_camera(Controller.CAMERA_STATE_ERROR_PAUSED)
+                        self.serial_controller.update_state_camera(Controller.CAMERA_STATE_ERROR_PAUSED)
+                    else:
+                        self.controller.update_state_camera(Controller.CAMERA_STATE_ERROR_ACTIVE)
+                        self.serial_controller.update_state_camera(Controller.CAMERA_STATE_ERROR_ACTIVE)
                 else:
-                    self.controller.update_state_camera(Controller.CAMERA_STATE_ERROR)
-                    self.serial_controller.update_state_camera(Controller.CAMERA_STATE_ERROR)
+                    if self.pause_output:
+                        self.controller.update_state_camera(Controller.CAMERA_STATE_PAUSED)
+                        self.serial_controller.update_state_camera(Controller.CAMERA_STATE_PAUSED)
+                    else:
+                        self.controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
+                        self.serial_controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
 
                 # Replace with black if none
                 if self.final_output_frame is None:

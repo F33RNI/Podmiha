@@ -62,8 +62,8 @@ class SerialController:
         self.request_microphone_pause = True
         self.request_camera_resume = False
         self.request_microphone_resume = False
-        self.camera_current_state = Controller.CAMERA_STATE_ERROR
-        self.microphone_current_state = Controller.MICROPHONE_STATE_ERROR
+        self.camera_current_state = Controller.CAMERA_STATE_ERROR_PAUSED
+        self.microphone_current_state = Controller.MICROPHONE_STATE_ERROR_PAUSED
 
     def get_request_camera_pause(self):
         return self.request_camera_pause
@@ -219,7 +219,8 @@ class SerialController:
                             if camera_state_request is not camera_state_request_last:
                                 camera_state_request_last = camera_state_request
                                 # Paused -> Resume
-                                if self.camera_current_state is Controller.CAMERA_STATE_PAUSED:
+                                if self.camera_current_state == Controller.CAMERA_STATE_PAUSED \
+                                        or self.camera_current_state == Controller.CAMERA_STATE_ERROR_PAUSED:
                                     self.request_camera_resume = True
                                 # Not paused -> Pause
                                 else:
@@ -229,7 +230,8 @@ class SerialController:
                             if microphone_state_request is not microphone_state_request_last:
                                 microphone_state_request_last = microphone_state_request
                                 # Paused -> Resume
-                                if self.microphone_current_state is Controller.MICROPHONE_STATE_PAUSED:
+                                if self.microphone_current_state == Controller.MICROPHONE_STATE_PAUSED \
+                                        or self.microphone_current_state == Controller.MICROPHONE_STATE_ERROR_PAUSED:
                                     self.request_microphone_resume = True
                                 # Not paused -> Pause
                                 else:
@@ -251,18 +253,27 @@ class SerialController:
                                 self.telegram_handler.send_screenshot()
 
                             # Form response packet
-                            serial_tx_buffer[0] \
-                                = 1 & 0xFF if self.camera_current_state is not Controller.CAMERA_STATE_PAUSED \
-                                else 0 & 0xFF
-                            serial_tx_buffer[1] \
-                                = 1 & 0xFF if self.microphone_current_state is not Controller.MICROPHONE_STATE_PAUSED \
-                                else 0 & 0xFF
+                            # Camera current state
+                            if self.camera_current_state == Controller.CAMERA_STATE_PAUSED \
+                                    or self.camera_current_state == Controller.CAMERA_STATE_ERROR_PAUSED:
+                                serial_tx_buffer[0] = 0
+                            else:
+                                serial_tx_buffer[0] = 1
 
+                            # Microphone current state
+                            if self.microphone_current_state == Controller.MICROPHONE_STATE_PAUSED \
+                                    or self.microphone_current_state == Controller.MICROPHONE_STATE_ERROR_PAUSED:
+                                serial_tx_buffer[1] = 0
+                            else:
+                                serial_tx_buffer[1] = 1
+
+                            # Calculate check-sum
                             serial_tx_buffer[2] = 0
                             for i in range(2):
                                 serial_tx_buffer[2] ^= serial_tx_buffer[i] & 0xFF
                                 serial_tx_buffer[2] &= 0xFF
 
+                            # Packet suffix
                             serial_tx_buffer[3] = int(PACKET_SUFFIX_1) & 0xFF
                             serial_tx_buffer[4] = int(PACKET_SUFFIX_2) & 0xFF
 

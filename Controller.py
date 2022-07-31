@@ -27,13 +27,15 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QFrame, QDesktopW
 
 import TelegramHandler
 
-CAMERA_STATE_ERROR = 0
-CAMERA_STATE_ACTIVE = 1
-CAMERA_STATE_PAUSED = 2
+CAMERA_STATE_ERROR_ACTIVE = 0
+CAMERA_STATE_ERROR_PAUSED = 1
+CAMERA_STATE_ACTIVE = 2
+CAMERA_STATE_PAUSED = 3
 
-MICROPHONE_STATE_ERROR = 0
-MICROPHONE_STATE_ACTIVE = 1
-MICROPHONE_STATE_PAUSED = 2
+MICROPHONE_STATE_ERROR_ACTIVE = 0
+MICROPHONE_STATE_ERROR_PAUSED = 1
+MICROPHONE_STATE_ACTIVE = 2
+MICROPHONE_STATE_PAUSED = 3
 
 
 class VLine(QFrame):
@@ -70,8 +72,8 @@ class Controller(QWidget):
         self.update_show_fullscreen = update_show_fullscreen
 
         # Internal variables
-        self.camera_current_state = CAMERA_STATE_ERROR
-        self.microphone_current_state = MICROPHONE_STATE_ERROR
+        self.camera_current_state = CAMERA_STATE_ERROR_PAUSED
+        self.microphone_current_state = MICROPHONE_STATE_ERROR_PAUSED
         self.old_pos = QPoint(0, 0)
         self.timer = QTimer()
         self.request_camera_pause = True
@@ -81,11 +83,13 @@ class Controller(QWidget):
 
         # Icons
         # Camera
-        self.icon_camera_error = QIcon("./icons/camera_error.png")
+        self.icon_camera_error_active = QIcon("./icons/camera_error_active.png")
+        self.icon_camera_error_paused = QIcon("./icons/camera_error_paused.png")
         self.icon_camera_active = QIcon("./icons/camera_active.png")
         self.icon_camera_paused = QIcon("./icons/camera_paused.png")
         # Microphone
-        self.icon_microphone_error = QIcon("./icons/microphone_error.png")
+        self.icon_microphone_error_active = QIcon("./icons/microphone_error_active.png")
+        self.icon_microphone_error_paused = QIcon("./icons/microphone_error_paused.png")
         self.icon_microphone_active = QIcon("./icons/microphone_active.png")
         self.icon_microphone_paused = QIcon("./icons/microphone_paused.png")
         # Show screenshot
@@ -130,8 +134,8 @@ class Controller(QWidget):
         self.btn_show_gui.setStyleSheet(buttons_stylesheet)
 
         # Set initial icons
-        self.btn_camera_control.setIcon(self.icon_camera_error)
-        self.btn_microphone_control.setIcon(self.icon_microphone_error)
+        self.btn_camera_control.setIcon(self.icon_camera_error_paused)
+        self.btn_microphone_control.setIcon(self.icon_microphone_error_paused)
         self.btn_show_screenshot.setIcon(self.icon_screenshot_show)
         self.btn_send_plus.setIcon(self.icon_send_plus)
         self.btn_send_minus.setIcon(self.icon_send_minus)
@@ -236,7 +240,8 @@ class Controller(QWidget):
         :return:
         """
         # Paused -> Resume
-        if self.camera_current_state == CAMERA_STATE_PAUSED:
+        if self.camera_current_state == CAMERA_STATE_PAUSED\
+                or self.camera_current_state == CAMERA_STATE_ERROR_PAUSED:
             self.request_camera_resume = True
 
         # Not paused -> Pause
@@ -249,7 +254,8 @@ class Controller(QWidget):
         :return:
         """
         # Paused -> Resume
-        if self.microphone_current_state == MICROPHONE_STATE_PAUSED:
+        if self.microphone_current_state == MICROPHONE_STATE_PAUSED\
+                or self.microphone_current_state == MICROPHONE_STATE_ERROR_PAUSED:
             self.request_microphone_resume = True
 
         # Not paused -> Pause
@@ -267,8 +273,10 @@ class Controller(QWidget):
             self.update_camera_icon.emit(self.icon_camera_active)
         elif self.camera_current_state == CAMERA_STATE_PAUSED:
             self.update_camera_icon.emit(self.icon_camera_paused)
+        elif self.camera_current_state == CAMERA_STATE_ERROR_ACTIVE:
+            self.update_camera_icon.emit(self.icon_camera_error_active)
         else:
-            self.update_camera_icon.emit(self.icon_camera_error)
+            self.update_camera_icon.emit(self.icon_camera_error_paused)
 
     def update_state_microphone(self, new_state: int):
         """
@@ -281,8 +289,10 @@ class Controller(QWidget):
             self.update_microphone_icon.emit(self.icon_microphone_active)
         elif self.microphone_current_state == MICROPHONE_STATE_PAUSED:
             self.update_microphone_icon.emit(self.icon_microphone_paused)
+        elif self.microphone_current_state == MICROPHONE_STATE_ERROR_ACTIVE:
+            self.update_microphone_icon.emit(self.icon_microphone_error_active)
         else:
-            self.update_microphone_icon.emit(self.icon_microphone_error)
+            self.update_microphone_icon.emit(self.icon_microphone_error_paused)
 
     def paintEvent(self, event):
         """

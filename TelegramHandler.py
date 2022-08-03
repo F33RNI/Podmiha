@@ -25,6 +25,7 @@ import pyautogui
 import telegram
 
 import SettingsHandler
+import Podmiha
 
 
 class TelegramHandler:
@@ -40,6 +41,18 @@ class TelegramHandler:
                 token = str(self.settings_handler.settings["telegram_bot_token"])
                 self.bot = telegram.Bot(token=token)
                 logging.info("Telegram bot token: " + token)
+
+                # Send test message
+                try:
+                    chat_id = str(self.settings_handler.settings["telegram_chat_id"])
+                    message = "Bot initialized. Podmiha version: " + Podmiha.APP_VERSION
+                    if self.bot.send_message(chat_id=chat_id, text=message).text == message:
+                        logging.info("Sent: " + message)
+                    else:
+                        logging.error("Error sending message")
+                except Exception as e:
+                    logging.exception(e)
+                    logging.error("Error sending podmiha version with Telegram bot!")
             except Exception as e:
                 logging.exception(e)
                 logging.error("Error initializing Telegram bot!")

@@ -27,25 +27,25 @@
 /*            Hardware pins            */
 /***************************************/
 // WS2812 status led pin
-const uint8_t PIN_WS2812 PROGMEM = 2;
+const uint8_t PIN_WS2812 PROGMEM = 9;
 
 // Camera toggle button
-const uint8_t PIN_CAMERA_BTN PROGMEM = 3;
+const uint8_t PIN_CAMERA_BTN PROGMEM = 2;
 
 // Microphone toggle button
-const uint8_t PIN_MICROPHONE_BTN PROGMEM = 4;
+const uint8_t PIN_MICROPHONE_BTN PROGMEM = 3;
 
 // Send plus button
-const uint8_t PIN_SEND_PLUS_BTN PROGMEM = 5;
+const uint8_t PIN_SEND_PLUS_BTN PROGMEM = 4;
 
 // Send minus button
-const uint8_t PIN_SEND_MINUS_BTN PROGMEM = 6;
+const uint8_t PIN_SEND_MINUS_BTN PROGMEM = 5;
 
 // Send screenshot button
-const uint8_t PIN_SEND_SCREENSHOT_BTN PROGMEM = 7;
+const uint8_t PIN_SEND_SCREENSHOT_BTN PROGMEM = 6;
 
 // Delay (in ms) for button debouncing
-const uint16_t DEBOUNCE_DELAY_MS = 100;
+const uint16_t DEBOUNCE_DELAY_MS = 200;
 
 
 /**********************************************/
@@ -83,6 +83,9 @@ const uint64_t SERIAL_TIMEOUT_MS PROGMEM = 2000;
 // Color if camera and microphone are paused (RGB)
 #define COLOR_CAM_OFF_MIC_OFF 0, 40, 0
 
+// Color that needs to blink to confirm that the button is pressed
+#define COLOR_BUTTON_BLINK 20, 20, 20
+
 
 // System variables
 // Button states
@@ -115,6 +118,8 @@ Adafruit_NeoPixel status_led = Adafruit_NeoPixel(1, PIN_WS2812, NEO_GRB + NEO_KH
 // Methods
 void buttons_read(void);
 void show_current_status(void);
+void led_on(void);
+void led_off(void);
 void serial_read_data(void);
 void serial_send_data(void);
 
@@ -133,6 +138,9 @@ void setup() {
   // Open serial port
   COMMUNICATION_SERIAL.begin(SERIAL_BAUD_RATE);
   delay(100);
+
+  // Set serial_timeout_flag
+  serial_timeout_flag = true;
 }
 
 void loop() {
@@ -173,12 +181,19 @@ void buttons_read(void) {
     state_btn_camera_last = state_btn_camera;
 
     // Button pressed
-    if (state_btn_camera)
+    if (state_btn_camera) {
       // Invert camera request
       request_state_camera = !request_state_camera;
 
+      // Blink to show that button is pressed
+      led_on();
+    }
+
     // Debouncing
     delay(DEBOUNCE_DELAY_MS);
+
+    // Turn led off
+    led_off();
   }
 
   // Microphone button state changed
@@ -187,12 +202,19 @@ void buttons_read(void) {
     state_btn_microphone_last = state_btn_microphone;
 
     // Button pressed
-    if (state_btn_microphone)
+    if (state_btn_microphone) {
       // Invert microphone request
       request_state_microphone = !request_state_microphone;
 
+      // Blink to show that button is pressed
+      led_on();
+    }
+
     // Debouncing
     delay(DEBOUNCE_DELAY_MS);
+
+    // Turn led off
+    led_off();
   }
 
   // Send plus button state changed
@@ -205,10 +227,16 @@ void buttons_read(void) {
       // Increment counter
       send_plus_counter++;
       send_plus_counter %= 254;
+
+      // Blink to show that button is pressed
+      led_on();
     }
 
     // Debouncing
     delay(DEBOUNCE_DELAY_MS);
+
+    // Turn led off
+    led_off();
   }
 
   // Send minus button state changed
@@ -221,10 +249,16 @@ void buttons_read(void) {
       // Increment counter
       send_minus_counter++;
       send_minus_counter %= 254;
+
+      // Blink to show that button is pressed
+      led_on();
     }
     
     // Debouncing
     delay(DEBOUNCE_DELAY_MS);
+
+    // Turn led off
+    led_off();
   }
 
   // Send screenshot button state changed
@@ -237,10 +271,16 @@ void buttons_read(void) {
       // Increment counter
       send_screenshot_counter++;
       send_screenshot_counter %= 254;
+
+      // Blink to show that button is pressed
+      led_on();
     }
 
     // Debouncing
     delay(DEBOUNCE_DELAY_MS);
+
+    // Turn led off
+    led_off();
   }
 }
 
@@ -266,6 +306,24 @@ void show_current_status(void) {
     status_led.setPixelColor(0, 0);
 
   // Show current state
+  status_led.show();
+}
+
+/**
+ * @brief Turns on status led with COLOR_BUTTON_BLINK
+ * 
+ */
+void led_on(void) {
+  status_led.setPixelColor(0, COLOR_BUTTON_BLINK);
+  status_led.show();
+}
+
+/**
+ * @brief Turns off status led
+ * 
+ */
+void led_off(void) {
+  status_led.setPixelColor(0, 0);
   status_led.show();
 }
 

@@ -9,9 +9,6 @@
         <a href="https://twitter.com/fern_hertz"><img alt="Twitter" src="https://img.shields.io/twitter/url?label=My%20twitter&style=social&url=https%3A%2F%2Ftwitter.com%2Ffern_hertz" ></a>
         <img src="https://badges.frapsoft.com/os/v1/open-source.png?v=103" >
         <a href="https://github.com/F33RNI/Podmiha/releases/latest"><img src="https://img.shields.io/badge/download-latest-blueviolet" ></a>
-        <img src="https://img.shields.io/github/last-commit/F33RNI/Podmiha" >
-        <a href="https://github.com/F33RNI/Podmiha/blob/main/LICENSE"><img src="https://img.shields.io/github/license/F33RNI/Podmiha" ></a>
-        <a href="https://github.com/F33RNI/Podmiha/stargazers"><img src="https://img.shields.io/github/stars/F33RNI/Podmiha" ></a>
     </p>
 </div>
 

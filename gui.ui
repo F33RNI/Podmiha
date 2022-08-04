@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>666</width>
-    <height>411</height>
+    <height>415</height>
    </rect>
   </property>
   <property name="font">
@@ -45,9 +45,9 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-1587</y>
+         <y>-267</y>
          <width>301</width>
-         <height>1937</height>
+         <height>1945</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -299,7 +299,7 @@
           <item>
            <widget class="QSpinBox" name="window_crop_left">
             <property name="minimum">
-             <number>0</number>
+             <number>-1000</number>
             </property>
             <property name="maximum">
              <number>1000</number>
@@ -309,7 +309,7 @@
           <item>
            <widget class="QSpinBox" name="window_crop_top">
             <property name="minimum">
-             <number>0</number>
+             <number>-1000</number>
             </property>
             <property name="maximum">
              <number>1000</number>
@@ -319,7 +319,7 @@
           <item>
            <widget class="QSpinBox" name="window_crop_right">
             <property name="minimum">
-             <number>0</number>
+             <number>-1000</number>
             </property>
             <property name="maximum">
              <number>1000</number>
@@ -329,7 +329,7 @@
           <item>
            <widget class="QSpinBox" name="window_crop_bottom">
             <property name="minimum">
-             <number>0</number>
+             <number>-1000</number>
             </property>
             <property name="maximum">
              <number>1000</number>

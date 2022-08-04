@@ -38,7 +38,8 @@ INCLUDE_FILES = ["icons",
                  "README.md",
                  "LICENSE",
                  "camera_calibration.py",
-                 "camera_calibration.bat"]
+                 "camera_calibration.bat",
+                 "charuco_board.jpg"]
 
 if __name__ == "__main__":
     pyi_command = []

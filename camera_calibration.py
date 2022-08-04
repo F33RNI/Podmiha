@@ -42,17 +42,9 @@ corners_all_old = []
 ids_all_old = []
 image_size = None
 
-CAMERA_ID = int(input("Enter camera ID: "))
-print("Camera ID:", CAMERA_ID)
-
-cap = cv2.VideoCapture(CAMERA_ID)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
-cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
-
-# Show ChAruco Board
-cv2.imshow("ChAruco Board", CHARUCO_BOARD.draw((800, 800)))
+# Save ChAruco Board
+charuco_image = CHARUCO_BOARD.draw((800, 800))
+cv2.imwrite("charuco_board.jpg", charuco_image)
 
 # Reset counter
 i = 0
@@ -60,6 +52,18 @@ i = 0
 # Matrix and distortions
 camera_matrix = None
 camera_distortions = None
+
+# Open camera
+CAMERA_ID = int(input("Enter camera ID: "))
+print("Camera ID:", CAMERA_ID)
+cap = cv2.VideoCapture(CAMERA_ID)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
+cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+
+# Show charuco board
+# cv2.imshow("ChAruco Board", charuco_image)
 
 # Print help info
 print("--------------")

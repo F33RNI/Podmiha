@@ -93,3 +93,25 @@ In addition to controlling, the current system status is also displayed in the f
 - Camera paused, microphone paused: **Green** (RGB: 0, 40, 0)
 
 For example, you can fix the LED on the table, and the buttons on the floor and thus control the system
+
+## ARUco detector parameters
+
+In order to improve aruco detection Podmiha has `detector parameters` field in ARUco section
+
+Default values: `7, 30, 1, 0.05, 5, 0.1, 4, 0.35, 0.6, 10, 23`
+
+Order:
+
+1. `7` - `adaptiveThreshConstant`
+2. `30` - `cornerRefinementMaxIterations`
+3. `1` - `cornerRefinementMethod`
+4. `0.05` - `polygonalApproxAccuracyRate`
+5. `5` - `cornerRefinementWinSize`
+6. `0.1` - `cornerRefinementMinAccuracy`
+7. `4` - `perspectiveRemovePixelPerCell`
+8. `0.35` - `maxErroneousBitsInBorderRate`
+9. `0.6` - `errorCorrectionRate`
+10. `10` - `adaptiveThreshWinSizeStep`
+11. `23` - `adaptiveThreshWinSizeMax`
+
+See `https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html` for more info

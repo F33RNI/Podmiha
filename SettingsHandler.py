@@ -48,6 +48,8 @@ SETTINGS_DEFAULT = {
     "aruco_margins": [0, 0, 0, 0],
     "aruco_ids": [0, 1, 2, 3],
     "aruco_detector_parameters": OpenCVHandler.DEFAULT_DETECTOR_PARAMETERS,
+    "aruco_filter_scale": 5.,
+    "aruco_filter_enabled": True,
     "virtual_camera_enabled": False,
     "http_stream_enabled": False,
     "output_size": [960, 540],

@@ -197,6 +197,8 @@ class Window(QMainWindow):
         self.id_tr.valueChanged.connect(self.update_settings)
         self.id_br.valueChanged.connect(self.update_settings)
         self.id_bl.valueChanged.connect(self.update_settings)
+        self.aruco_filter_scale.valueChanged.connect(self.update_settings)
+        self.aruco_filter_enabled.clicked.connect(self.write_settings)
         self.aruco_detector_parameters.textChanged.connect(self.update_settings)
         self.virtual_camera_enabled.clicked.connect(self.write_settings)
         self.http_stream_enabled.clicked.connect(self.write_settings)
@@ -291,6 +293,8 @@ class Window(QMainWindow):
             self.id_tr.setValue(int(self.settings_handler.settings["aruco_ids"][1]))
             self.id_br.setValue(int(self.settings_handler.settings["aruco_ids"][2]))
             self.id_bl.setValue(int(self.settings_handler.settings["aruco_ids"][3]))
+            self.aruco_filter_scale.setValue(float(self.settings_handler.settings["aruco_filter_scale"]))
+            self.aruco_filter_enabled.setChecked(self.settings_handler.settings["aruco_filter_enabled"])
             self.aruco_detector_parameters.setText(self.settings_handler.settings["aruco_detector_parameters"])
 
             # Video output
@@ -378,6 +382,8 @@ class Window(QMainWindow):
         self.settings_handler.settings["aruco_ids"][1] = int(self.id_tr.value())
         self.settings_handler.settings["aruco_ids"][2] = int(self.id_br.value())
         self.settings_handler.settings["aruco_ids"][3] = int(self.id_bl.value())
+        self.settings_handler.settings["aruco_filter_scale"] = float(self.aruco_filter_scale.value())
+        self.settings_handler.settings["aruco_filter_enabled"] = self.aruco_filter_enabled.isChecked()
         self.settings_handler.settings["aruco_detector_parameters"] = self.aruco_detector_parameters.text()
 
         # Video output

@@ -23,7 +23,7 @@
    <enum>Qt::LeftToRight</enum>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout_34">
+   <layout class="QHBoxLayout" name="horizontalLayout_35">
     <item>
      <widget class="QScrollArea" name="scrollArea">
       <property name="sizePolicy">
@@ -45,9 +45,9 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-926</y>
+         <y>-864</y>
          <width>301</width>
-         <height>1904</height>
+         <height>1937</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -533,6 +533,13 @@
          </widget>
         </item>
         <item>
+         <widget class="QCheckBox" name="aruco_invert_checkbox">
+          <property name="text">
+           <string>Invert colors</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <layout class="QHBoxLayout" name="horizontalLayout_11">
           <item>
            <widget class="QLabel" name="label_17">
@@ -552,13 +559,6 @@
            </widget>
           </item>
          </layout>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="aruco_invert_checkbox">
-          <property name="text">
-           <string>Invert colors</string>
-          </property>
-         </widget>
         </item>
         <item>
          <widget class="QLabel" name="label_16">
@@ -659,6 +659,43 @@
            <widget class="QSpinBox" name="id_bl">
             <property name="maximum">
              <number>49</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_34">
+          <item>
+           <widget class="QLabel" name="label_49">
+            <property name="text">
+             <string>Filter scale:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="aruco_filter_scale">
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="minimum">
+             <double>0.010000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>5.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="aruco_filter_enabled">
+            <property name="text">
+             <string>Enabled</string>
             </property>
            </widget>
           </item>

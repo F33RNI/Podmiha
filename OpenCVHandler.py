@@ -322,6 +322,8 @@ class OpenCVHandler:
         self.bl_filtered = [0., 0.]
         self.camera_matrix = None
         self.camera_distortions = None
+        self.aruco_filter_scale = 0
+        self.aruco_filter_enabled = False
 
         # Use 4x4 50 ARUco dictionary
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
@@ -387,6 +389,9 @@ class OpenCVHandler:
         self.flicker_interval = int(self.settings_handler.settings["flicker_interval"])
         self.frame_blending = self.settings_handler.settings["frame_blending"]
         self.brightness_gradient_enabled = self.settings_handler.settings["brightness_gradient"]
+        self.aruco_filter_scale = float(self.settings_handler.settings["aruco_filter_scale"])
+        self.aruco_filter_enabled = self.settings_handler.settings["aruco_filter_enabled"]
+
         parameters = str(self.settings_handler.settings["aruco_detector_parameters"]).replace(" ", "").split(",")
         if len(parameters) is not 11:
             logging.error("Wrong detector parameters! Using default...")
@@ -748,11 +753,9 @@ class OpenCVHandler:
                                 br = marker_br[2]
                                 bl = marker_bl[3]
 
-                                # self.tl_filtered[0] = self.tl_filtered[0] * 0.8 + tl[0] * 0.2
-                                # self.tl_filtered[1] = self.tl_filtered[1] * 0.8 + tl[1] * 0.2
-
-                                # tl[0] = int(self.tl_filtered[0])
-                                # tl[1] = int(self.tl_filtered[1])
+                                # Filter coordinates
+                                if self.aruco_filter_enabled:
+                                    tl, tr, br, bl = self.filter_corners(tl, tr, br, bl)
 
                                 # Dimensions of the frames
                                 overlay_height = self.window_image.shape[0]
@@ -942,6 +945,48 @@ class OpenCVHandler:
         # End of while loop
         cv2.destroyAllWindows()
         logging.warning("OpenCV loop exited")
+
+    def filter_corners(self, tl, tr, br, bl):
+        # Convert to float
+        tl_f = [float(tl[0]), float(tl[1])]
+        tr_f = [float(tr[0]), float(tr[1])]
+        br_f = [float(br[0]), float(br[1])]
+        bl_f = [float(bl[0]), float(bl[1])]
+
+        # Find average difference
+        diff_tl = (abs(tl_f[0] - self.tl_filtered[0]) + abs(tl_f[1] - self.tl_filtered[1])) / 2.
+        diff_tr = (abs(tr_f[0] - self.tr_filtered[0]) + abs(tr_f[1] - self.tr_filtered[1])) / 2.
+        diff_br = (abs(br_f[0] - self.br_filtered[0]) + abs(br_f[1] - self.br_filtered[1])) / 2.
+        diff_bl = (abs(bl_f[0] - self.bl_filtered[0]) + abs(bl_f[1] - self.bl_filtered[1])) / 2.
+        diff = (diff_tl + diff_tr + diff_br + diff_bl) / 4.
+        if diff > self.aruco_filter_scale:
+            diff = self.aruco_filter_scale
+
+        # Calculate filter factor
+        filter_factor = 1. - (diff / self.aruco_filter_scale)
+        if filter_factor >= 1.:
+            filter_factor = 0.99
+
+        self.tl_filtered = [self.tl_filtered[0] * filter_factor + tl_f[0] * (1. - filter_factor)
+            , self.tl_filtered[1] * filter_factor + tl_f[1] * (1. - filter_factor)]
+
+        self.tr_filtered = [self.tr_filtered[0] * filter_factor + tr_f[0] * (1. - filter_factor)
+            , self.tr_filtered[1] * filter_factor + tr_f[1] * (1. - filter_factor)]
+
+        self.br_filtered = [self.br_filtered[0] * filter_factor + br_f[0] * (1. - filter_factor)
+            , self.br_filtered[1] * filter_factor + br_f[1] * (1. - filter_factor)]
+
+        self.bl_filtered = [self.bl_filtered[0] * filter_factor + bl_f[0] * (1. - filter_factor)
+            , self.bl_filtered[1] * filter_factor + bl_f[1] * (1. - filter_factor)]
+
+        # Convert back to int
+        tl = [int(self.tl_filtered[0]), int(self.tl_filtered[1])]
+        tr = [int(self.tr_filtered[0]), int(self.tr_filtered[1])]
+        br = [int(self.br_filtered[0]), int(self.br_filtered[1])]
+        bl = [int(self.bl_filtered[0]), int(self.bl_filtered[1])]
+
+        # Return filtered data
+        return tl, tr, br, bl
 
     def set_preview_mode(self, preview_mode: int):
         self.preview_mode = preview_mode

@@ -55,7 +55,9 @@ if __name__ == "__main__":
 
     # Add all .py files to pyi_command
     for file in os.listdir("./"):
-        if file.endswith(".py") and str(file) != MAIN_FILE and str(file) != os.path.basename(__file__):
+        if file.endswith(".py") and str(file) != MAIN_FILE \
+                and str(file) != os.path.basename(__file__) \
+                and str(file) != "camera_calibration.py":
             pyi_command.append(str(file))
 
     # Add main file to pyi_command

@@ -45,7 +45,7 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-864</y>
+         <y>-1587</y>
          <width>301</width>
          <height>1937</height>
         </rect>
@@ -59,7 +59,7 @@
            </font>
           </property>
           <property name="styleSheet">
-           <string notr="true">background-color: rgb(255, 170, 255);</string>
+           <string notr="true">background-color: rgb(255, 175, 175);</string>
           </property>
           <property name="text">
            <string>Camera</string>
@@ -191,7 +191,7 @@
            </font>
           </property>
           <property name="styleSheet">
-           <string notr="true">background-color: rgb(208, 205, 173);</string>
+           <string notr="true">background-color: rgb(255, 210, 175);</string>
           </property>
           <property name="text">
            <string>Window capture</string>
@@ -387,7 +387,7 @@
            </font>
           </property>
           <property name="styleSheet">
-           <string notr="true">background-color: rgb(170, 255, 255);</string>
+           <string notr="true">background-color: rgb(255, 255, 175)</string>
           </property>
           <property name="text">
            <string>Flicker</string>
@@ -458,7 +458,7 @@
            </font>
           </property>
           <property name="styleSheet">
-           <string notr="true">background-color: rgb(255, 196, 161);</string>
+           <string notr="true">background-color: rgb(175, 255, 175);</string>
           </property>
           <property name="text">
            <string>ARUco markers</string>
@@ -733,7 +733,7 @@
            </font>
           </property>
           <property name="styleSheet">
-           <string notr="true">background-color: rgb(143, 170, 153);</string>
+           <string notr="true">background-color: rgb(175, 229, 255);</string>
           </property>
           <property name="text">
            <string>Video output</string>
@@ -1023,7 +1023,7 @@
            </font>
           </property>
           <property name="styleSheet">
-           <string notr="true">background-color: rgb(255, 255, 127);</string>
+           <string notr="true">background-color: rgb(175, 175, 255);</string>
           </property>
           <property name="text">
            <string>Audio</string>
@@ -1157,7 +1157,7 @@
            </font>
           </property>
           <property name="styleSheet">
-           <string notr="true">background-color: rgb(85, 170, 255);</string>
+           <string notr="true">background-color: rgb(215, 175, 255);</string>
           </property>
           <property name="text">
            <string>Telegram bot</string>
@@ -1294,7 +1294,7 @@
            </font>
           </property>
           <property name="styleSheet">
-           <string notr="true">background-color: rgb(184, 184, 184);</string>
+           <string notr="true">background-color: rgb(175, 175, 175);</string>
           </property>
           <property name="text">
            <string>Control via serial port</string>

@@ -28,7 +28,10 @@ print()
 print("Camera ID:", CAMERA_ID)
 
 cap = cv2.VideoCapture(CAMERA_ID)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 WAIT_TIME = 10
+
 # Termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -75,7 +78,7 @@ while True:
             print("Calibration image: ", i)
 
     # Show image
-    cv2.imshow("Frame", frame)
+    cv2.imshow("Frame", cv2.resize(frame, (640, 360)))
 
     # Exit on Q key
     if cv2.waitKey(1) & 0xFF == ord("q"):

@@ -65,17 +65,17 @@ while True:
         frame = cv2.drawChessboardCorners(frame, (7, 6), corners2, ret)
 
         # Print help message
-        print("Press SPACE to append calibration")
+        # print("Press SPACE to append calibration")
 
         # Append calibration on Space bar press
-        if cv2.waitKey(1) & 0xFF == 32:
-            # Append data
-            object_points.append(obj_p)
-            image_points.append(corners2)
+        # if cv2.waitKey(1) & 0xFF == 32:
+        # Append data
+        object_points.append(obj_p)
+        image_points.append(corners2)
 
-            # Print image number
-            i += 1
-            print("Calibration image: ", i)
+        # Print image number
+        i += 1
+        print("Calibration image: ", i)
 
     # Show image
     cv2.imshow("Frame", cv2.resize(frame, (640, 360)))

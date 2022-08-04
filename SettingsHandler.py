@@ -24,6 +24,8 @@ import json
 import logging
 import os
 
+import OpenCVHandler
+
 SETTINGS_DEFAULT = {
     "input_camera": 0,
     "use_dshow": True,
@@ -45,6 +47,7 @@ SETTINGS_DEFAULT = {
     "aruco_invert": True,
     "aruco_margins": [0, 0, 0, 0],
     "aruco_ids": [0, 1, 2, 3],
+    "aruco_detector_parameters": OpenCVHandler.DEFAULT_DETECTOR_PARAMETERS,
     "virtual_camera_enabled": False,
     "http_stream_enabled": False,
     "output_size": [960, 540],

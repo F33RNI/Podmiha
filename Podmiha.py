@@ -56,7 +56,7 @@ import winguiauto
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
 
 
-APP_VERSION = "1.2.3"
+APP_VERSION = "1.3.0"
 
 SETTINGS_FILE = "settings.json"
 
@@ -197,6 +197,7 @@ class Window(QMainWindow):
         self.id_tr.valueChanged.connect(self.update_settings)
         self.id_br.valueChanged.connect(self.update_settings)
         self.id_bl.valueChanged.connect(self.update_settings)
+        self.aruco_detector_parameters.textChanged.connect(self.update_settings)
         self.virtual_camera_enabled.clicked.connect(self.write_settings)
         self.http_stream_enabled.clicked.connect(self.write_settings)
         self.output_blur_radius.valueChanged.connect(self.update_settings)
@@ -290,6 +291,7 @@ class Window(QMainWindow):
             self.id_tr.setValue(int(self.settings_handler.settings["aruco_ids"][1]))
             self.id_br.setValue(int(self.settings_handler.settings["aruco_ids"][2]))
             self.id_bl.setValue(int(self.settings_handler.settings["aruco_ids"][3]))
+            self.aruco_detector_parameters.setText(self.settings_handler.settings["aruco_detector_parameters"])
 
             # Video output
             self.virtual_camera_enabled.setChecked(self.settings_handler.settings["virtual_camera_enabled"])
@@ -376,6 +378,7 @@ class Window(QMainWindow):
         self.settings_handler.settings["aruco_ids"][1] = int(self.id_tr.value())
         self.settings_handler.settings["aruco_ids"][2] = int(self.id_br.value())
         self.settings_handler.settings["aruco_ids"][3] = int(self.id_bl.value())
+        self.settings_handler.settings["aruco_detector_parameters"] = self.aruco_detector_parameters.text()
 
         # Video output
         self.settings_handler.settings["virtual_camera_enabled"] = self.virtual_camera_enabled.isChecked()

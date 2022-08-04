@@ -42,6 +42,8 @@ import winguiauto
 
 VIDEO_NOISE_FILE = "noise.avi"
 
+DEFAULT_DETECTOR_PARAMETERS = "10, 30, 1, 0.05, 5, 0.1, 4, 0.35, 0.6, 10, 23"
+
 PREVIEW_OUTPUT = 0
 PREVIEW_WINDOW = 1
 PREVIEW_SOURCE = 2
@@ -325,9 +327,7 @@ class OpenCVHandler:
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
 
         # ARUco detection parameters
-        # TODO: Improve this
         self.parameters = cv2.aruco.DetectorParameters_create()
-        self.parameters.adaptiveThreshConstant = 10
 
     def get_final_output_frame(self):
         return self.final_output_frame
@@ -387,6 +387,16 @@ class OpenCVHandler:
         self.flicker_interval = int(self.settings_handler.settings["flicker_interval"])
         self.frame_blending = self.settings_handler.settings["frame_blending"]
         self.brightness_gradient_enabled = self.settings_handler.settings["brightness_gradient"]
+        parameters = str(self.settings_handler.settings["aruco_detector_parameters"]).replace(" ", "").split(",")
+        if len(parameters) is not 11:
+            logging.error("Wrong detector parameters! Using default...")
+            parameters = DEFAULT_DETECTOR_PARAMETERS
+        try:
+            self.update_detector_parameters(parameters)
+        except Exception as e:
+            logging.exception(e)
+            logging.error("Wrong detector parameters! Using default...")
+            self.update_detector_parameters(DEFAULT_DETECTOR_PARAMETERS)
 
         if self.video_capture is not None:
             # Focus
@@ -408,6 +418,24 @@ class OpenCVHandler:
         except:
             pass
         # change_window_state(self.window_title, win32con.SW_SHOWMAXIMIZED)
+
+    def update_detector_parameters(self, parameters: str):
+        """
+        Updates detector parameters
+        :param parameters:
+        :return:
+        """
+        self.parameters.adaptiveThreshConstant = int(parameters[0])
+        self.parameters.cornerRefinementMaxIterations = int(parameters[1])
+        self.parameters.cornerRefinementMethod = int(parameters[2])
+        self.parameters.polygonalApproxAccuracyRate = float(parameters[3])
+        self.parameters.cornerRefinementWinSize = int(parameters[4])
+        self.parameters.cornerRefinementMinAccuracy = float(parameters[5])
+        self.parameters.perspectiveRemovePixelPerCell = int(parameters[6])
+        self.parameters.maxErroneousBitsInBorderRate = float(parameters[7])
+        self.parameters.errorCorrectionRate = float(parameters[8])
+        self.parameters.adaptiveThreshWinSizeStep = int(parameters[9])
+        self.parameters.adaptiveThreshWinSizeMax = int(parameters[10])
 
     def open_camera(self):
         # Pause camera
@@ -509,8 +537,8 @@ class OpenCVHandler:
                     logging.info("Camera resumed")
 
                 # Grab window image
-                # noinspection PyBroadException
                 window_image = None
+                # noinspection PyBroadException
                 try:
                     if self.window_capture_allowed and self.hwnd is not None:
                         if self.window_capture_method == WINDOW_CAPTURE_STABLE:

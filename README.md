@@ -1,7 +1,7 @@
 <h1 align="center">Podmiha exam helper</h1>
 <div style="width:100%;text-align:center;">
     <p align="center">
-        <img src="PODMIHA_DESCRIPTION.jpg" width="auto" height="400">
+        <img src="PODMIHA_DESCRIPTION.jpg" width="auto" height="300">
     </p>
 </div>
 <div style="width:100%;text-align:center;">
@@ -23,6 +23,12 @@ This application will help you pass the online exam.
 - *Forced to show the computer screen to the camera?* No problem, Podmiha replace the screen image with the desired window (for example, a virtual machine).
 - *Forced to keep the microphone on?* No problem, Podmiha will allow you to pause the microphone and add fake noise.
 - *Forced to show hands?* No problem, Podmiha implements the ability to control the camera and microphone **with your feet**, as well as send messages and screenshots to the Telegram chat. (You can call a friend to dictate the answer to you)
+
+<div style="width:100%;text-align:center;">
+    <p align="center">
+        <img src="PODMIHA_DESCRIPTION_2.jpg" width="auto" height="200">
+    </p>
+</div>
 
 ## Disclaimer
 

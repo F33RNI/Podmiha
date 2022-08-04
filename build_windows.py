@@ -37,7 +37,6 @@ INCLUDE_FILES = ["icons",
                  "noise.avi",
                  "README.md",
                  "LICENSE",
-                 "camera_calibration.yaml",
                  "camera_calibration.py",
                  "camera_calibration.bat"]
 

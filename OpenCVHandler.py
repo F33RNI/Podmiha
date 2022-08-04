@@ -20,6 +20,7 @@
 """
 
 import logging
+import os
 import threading
 import time
 
@@ -317,8 +318,8 @@ class OpenCVHandler:
         self.tr_filtered = [0., 0.]
         self.br_filtered = [0., 0.]
         self.bl_filtered = [0., 0.]
-        self.camera_matrix = []
-        self.camera_distortions = []
+        self.camera_matrix = None
+        self.camera_distortions = None
 
         # Use 4x4 50 ARUco dictionary
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
@@ -340,10 +341,14 @@ class OpenCVHandler:
         :return:
         """
         # Read camera calibration
-        cv_file = cv2.FileStorage("camera_calibration.yaml", cv2.FILE_STORAGE_READ)
-        self.camera_matrix = cv_file.getNode("camera_matrix").mat()
-        self.camera_distortions = cv_file.getNode("dist_coeff").mat()
-        cv_file.release()
+        if os.path.exists("camera_calibration.yaml"):
+            cv_file = cv2.FileStorage("camera_calibration.yaml", cv2.FILE_STORAGE_READ)
+            self.camera_matrix = cv_file.getNode("camera_matrix").mat()
+            self.camera_distortions = cv_file.getNode("dist_coeff").mat()
+            cv_file.release()
+        else:
+            self.camera_matrix = None
+            self.camera_distortions = None
 
         # Set flags
         self.opencv_thread_running = True
@@ -592,6 +597,12 @@ class OpenCVHandler:
 
                                     # Retrieve frame
                                     input_ret, flicker_key_frame_2 = self.video_capture.read()
+                                    if input_ret and self.camera_matrix is not None \
+                                            and self.camera_distortions is not None:
+                                        flicker_key_frame_2 = cv2.undistort(flicker_key_frame_2,
+                                                                            self.camera_matrix,
+                                                                            self.camera_distortions,
+                                                                            None, self.camera_matrix)
 
                                     # Reset counter
                                     self.flick_counter = 0
@@ -620,6 +631,11 @@ class OpenCVHandler:
 
                             # Retrieve frame
                             input_ret, self.input_frame = self.video_capture.read()
+                            if input_ret and self.camera_matrix is not None and self.camera_distortions is not None:
+                                self.input_frame = cv2.undistort(self.input_frame,
+                                                                 self.camera_matrix,
+                                                                 self.camera_distortions,
+                                                                 None, self.camera_matrix)
 
                     # No camera image
                     else:
@@ -662,12 +678,12 @@ class OpenCVHandler:
                     gray_for_aruco = input_gray
 
                 # Find aruco markers
-                # corners, ids, _ = aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
-                #                                      parameters=self.parameters)
-                corners, ids, _ = aruco.detectMarkers(image=gray_for_aruco, dictionary=self.aruco_dict,
-                                                      parameters=self.parameters,
-                                                      cameraMatrix=self.camera_matrix,
-                                                      distCoeff=self.camera_distortions)
+                corners, ids, _ = aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
+                                                      parameters=self.parameters)
+                # corners, ids, _ = aruco.detectMarkers(image=gray_for_aruco, dictionary=self.aruco_dict,
+                #                                      parameters=self.parameters,
+                #                                     cameraMatrix=self.camera_matrix,
+                #                                      distCoeff=self.camera_distortions)
 
                 if self.fake_screen \
                         and self.fake_mode == FAKE_MODE_ARUCO \

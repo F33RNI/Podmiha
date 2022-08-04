@@ -75,6 +75,9 @@ while True:
     if not ret:
         break
 
+    # Clone source image to undistorted
+    img_undistorted = img.copy()
+
     # Get key
     key = cv2.waitKey(1) & 0xFF
 
@@ -101,7 +104,7 @@ while True:
             board=CHARUCO_BOARD)
 
         # Undo on X
-        if key == ord("x"):
+        if key == ord("x") and len(corners_all_old) > 0 and len(ids_all_old) > 0:
             print("Undoing...")
             # Restore old data
             corners_all = corners_all_old.copy()
@@ -153,13 +156,13 @@ while True:
             if not image_size:
                 image_size = gray.shape[::-1]
 
-    # Show current image
-    cv2.imshow("Frame", cv2.resize(img, (640, 360)))
-
     # Fix distortion in real-time
     if camera_matrix is not None and camera_distortions is not None:
         img_undistorted = cv2.undistort(img, camera_matrix, camera_distortions, None, camera_matrix)
-        cv2.imshow("Undistorted frame", cv2.resize(img_undistorted, (640, 360)))
+
+    # Show current images
+    cv2.imshow("Frame", cv2.resize(img, (640, 360)))
+    cv2.imshow("Undistorted frame", cv2.resize(img_undistorted, (640, 360)))
 
     # Exit on Q key
     if key == ord("q"):

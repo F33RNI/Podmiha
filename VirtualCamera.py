@@ -23,6 +23,8 @@ import threading
 import time
 
 import pyvirtualcam
+from pyvirtualcam import PixelFormat
+
 import SettingsHandler
 
 
@@ -50,7 +52,7 @@ class VirtualCamera:
             try:
                 width = int(self.settings_handler.settings["output_size"][0])
                 height = int(self.settings_handler.settings["output_size"][1])
-                self.virtual_camera = pyvirtualcam.Camera(width=width, height=height, fps=30)
+                self.virtual_camera = pyvirtualcam.Camera(width=width, height=height, fps=30, fmt=PixelFormat.BGR)
                 if self.virtual_camera.device is not None:
                     # Get driver name
                     self.virtual_camera_driver = str(self.virtual_camera.device)

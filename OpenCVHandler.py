@@ -317,6 +317,8 @@ class OpenCVHandler:
         self.tr_filtered = [0., 0.]
         self.br_filtered = [0., 0.]
         self.bl_filtered = [0., 0.]
+        self.camera_matrix = []
+        self.camera_distortions = []
 
         # Use 4x4 50 ARUco dictionary
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
@@ -337,8 +339,17 @@ class OpenCVHandler:
         Starts OpenCV loop as background thread
         :return:
         """
+        # Read camera calibration
+        cv_file = cv2.FileStorage("camera_calibration.yaml", cv2.FILE_STORAGE_READ)
+        self.camera_matrix = cv_file.getNode("camera_matrix").mat()
+        self.camera_distortions = cv_file.getNode("dist_coeff").mat()
+        cv_file.release()
+
+        # Set flags
         self.opencv_thread_running = True
         self.pause_output = True
+
+        # Start new thread
         thread = threading.Thread(target=self.opencv_thread)
         thread.start()
         logging.info("OpenCV Thread: " + thread.getName())
@@ -651,12 +662,12 @@ class OpenCVHandler:
                     gray_for_aruco = input_gray
 
                 # Find aruco markers
-                corners, ids, _ = aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
-                                                      parameters=self.parameters)
-                # corners, ids, _ = aruco.detectMarkers(image=input_gray, dictionary=self.aruco_dict,
-                #                                             parameters=self.parameters,
-                #                                             cameraMatrix=self.CAMERA_MATRIX,
-                #                                             distCoeff=self.CAMERA_DISTORTION)
+                # corners, ids, _ = aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
+                #                                      parameters=self.parameters)
+                corners, ids, _ = aruco.detectMarkers(image=gray_for_aruco, dictionary=self.aruco_dict,
+                                                      parameters=self.parameters,
+                                                      cameraMatrix=self.camera_matrix,
+                                                      distCoeff=self.camera_distortions)
 
                 if self.fake_screen \
                         and self.fake_mode == FAKE_MODE_ARUCO \
@@ -693,13 +704,11 @@ class OpenCVHandler:
                                 br = marker_br[2]
                                 bl = marker_bl[3]
 
-                                #self.tl_filtered[0] = self.tl_filtered[0] * 0.8 + tl[0] * 0.2
-                                #self.tl_filtered[1] = self.tl_filtered[1] * 0.8 + tl[1] * 0.2
+                                # self.tl_filtered[0] = self.tl_filtered[0] * 0.8 + tl[0] * 0.2
+                                # self.tl_filtered[1] = self.tl_filtered[1] * 0.8 + tl[1] * 0.2
 
-                                #tl[0] = int(self.tl_filtered[0])
-                                #tl[1] = int(self.tl_filtered[1])
-
-
+                                # tl[0] = int(self.tl_filtered[0])
+                                # tl[1] = int(self.tl_filtered[1])
 
                                 # Dimensions of the frames
                                 overlay_height = self.window_image.shape[0]
@@ -850,7 +859,6 @@ class OpenCVHandler:
                     # Set active state
                     self.controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
                     self.serial_controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
-
 
                 # Set current camera state
                 if error:

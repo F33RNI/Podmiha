@@ -36,7 +36,10 @@ INCLUDE_FILES = ["icons",
                  "gui.ui",
                  "noise.avi",
                  "README.md",
-                 "LICENSE"]
+                 "LICENSE",
+                 "camera_calibration.yaml",
+                 "camera_calibration.py",
+                 "camera_calibration.bat"]
 
 if __name__ == "__main__":
     pyi_command = []

@@ -45,9 +45,9 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-1506</y>
+         <y>-926</y>
          <width>301</width>
-         <height>1856</height>
+         <height>1904</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -57,6 +57,9 @@
            <font>
             <pointsize>16</pointsize>
            </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(255, 170, 255);</string>
           </property>
           <property name="text">
            <string>Camera</string>
@@ -186,6 +189,9 @@
            <font>
             <pointsize>16</pointsize>
            </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(208, 205, 173);</string>
           </property>
           <property name="text">
            <string>Window capture</string>
@@ -367,73 +373,6 @@
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_3">
-          <item>
-           <widget class="QLabel" name="label_4">
-            <property name="text">
-             <string>Final stretch scale X:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QDoubleSpinBox" name="stretch_scale_x">
-            <property name="decimals">
-             <number>3</number>
-            </property>
-            <property name="minimum">
-             <double>0.100000000000000</double>
-            </property>
-            <property name="maximum">
-             <double>5.000000000000000</double>
-            </property>
-            <property name="singleStep">
-             <double>0.001000000000000</double>
-            </property>
-            <property name="value">
-             <double>1.000000000000000</double>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_19">
-          <item>
-           <widget class="QLabel" name="label_29">
-            <property name="text">
-             <string>Final stretch scale Y:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QDoubleSpinBox" name="stretch_scale_y">
-            <property name="decimals">
-             <number>3</number>
-            </property>
-            <property name="minimum">
-             <double>0.100000000000000</double>
-            </property>
-            <property name="maximum">
-             <double>5.000000000000000</double>
-            </property>
-            <property name="singleStep">
-             <double>0.001000000000000</double>
-            </property>
-            <property name="value">
-             <double>1.000000000000000</double>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="brightness_gradient">
-          <property name="text">
-           <string>Brightness gradient</string>
-          </property>
-         </widget>
-        </item>
-        <item>
          <widget class="Line" name="line_2">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -446,6 +385,9 @@
            <font>
             <pointsize>16</pointsize>
            </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(170, 255, 255);</string>
           </property>
           <property name="text">
            <string>Flicker</string>
@@ -515,8 +457,78 @@
             <pointsize>16</pointsize>
            </font>
           </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(255, 196, 161);</string>
+          </property>
           <property name="text">
            <string>ARUco markers</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Final stretch scale X:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="stretch_scale_x">
+            <property name="decimals">
+             <number>3</number>
+            </property>
+            <property name="minimum">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>5.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.001000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_19">
+          <item>
+           <widget class="QLabel" name="label_29">
+            <property name="text">
+             <string>Final stretch scale Y:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="stretch_scale_y">
+            <property name="decimals">
+             <number>3</number>
+            </property>
+            <property name="minimum">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>5.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.001000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="brightness_gradient">
+          <property name="text">
+           <string>Brightness gradient</string>
           </property>
          </widget>
         </item>
@@ -653,6 +665,23 @@
          </layout>
         </item>
         <item>
+         <widget class="QLabel" name="label_48">
+          <property name="text">
+           <string>Detector parameters (see README)</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="aruco_detector_parameters">
+          <property name="accessibleDescription">
+           <string notr="true"/>
+          </property>
+          <property name="text">
+           <string notr="true"/>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="Line" name="line_3">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -665,6 +694,9 @@
            <font>
             <pointsize>16</pointsize>
            </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(143, 170, 153);</string>
           </property>
           <property name="text">
            <string>Video output</string>
@@ -953,6 +985,9 @@
             <pointsize>16</pointsize>
            </font>
           </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(255, 255, 127);</string>
+          </property>
           <property name="text">
            <string>Audio</string>
           </property>
@@ -1083,6 +1118,9 @@
            <font>
             <pointsize>16</pointsize>
            </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(85, 170, 255);</string>
           </property>
           <property name="text">
            <string>Telegram bot</string>
@@ -1217,6 +1255,9 @@
            <font>
             <pointsize>16</pointsize>
            </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(184, 184, 184);</string>
           </property>
           <property name="text">
            <string>Control via serial port</string>
@@ -1468,7 +1509,7 @@
  <connections/>
  <buttongroups>
   <buttongroup name="buttonGroup_3"/>
-  <buttongroup name="buttonGroup_2"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="buttonGroup_2"/>
  </buttongroups>
 </ui>

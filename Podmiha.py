@@ -55,7 +55,7 @@ import winguiauto
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
 
 
-APP_VERSION = "1.3.1"
+APP_VERSION = "1.4.0"
 
 SETTINGS_FILE = "settings.json"
 
@@ -768,13 +768,6 @@ if __name__ == "__main__":
 
     # Start app
     try:
-        # date = datetime.datetime.now()
-        # filename = date.strftime('%Y-%m-%d_%H-%M-%S.jpg')
-        # QScreen.grabWindow(app.primaryScreen(),
-        #              QApplication.desktop().winId()).save(filename, 'png')
-        #
-        # print(QGuiApplication.screens())
-
         app = QApplication(sys.argv)
         app.setStyle("fusion")
         win = Window()

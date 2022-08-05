@@ -28,9 +28,7 @@ import PyQt5
 import cv2
 import numpy as np
 import qimage2ndarray
-import win32con
 import win32gui
-import win32ui
 from PIL import ImageGrab
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPixmap
@@ -51,8 +49,8 @@ PREVIEW_SOURCE = 2
 FAKE_MODE_ARUCO = 0
 FAKE_MODE_FLICKER = 1
 
-WINDOW_CAPTURE_STABLE = 0
-WINDOW_CAPTURE_EXPERIMENTAL = 1
+WINDOW_CAPTURE_QT = 0
+WINDOW_CAPTURE_OLD = 1
 
 
 def _map(x, in_min, in_max, out_min, out_max):
@@ -546,35 +544,35 @@ class OpenCVHandler:
                 # noinspection PyBroadException
                 try:
                     if self.window_capture_allowed and self.hwnd is not None:
-                        if self.window_capture_method == WINDOW_CAPTURE_STABLE:
+                        if self.window_capture_method == WINDOW_CAPTURE_OLD:
                             # Don't update window image in fullscreen mode with stable capture mode
                             if not self.flicker.is_force_fullscreen_enabled():
                                 rect = win32gui.GetWindowPlacement(self.hwnd)[-1]
                                 window_image = cv2.cvtColor(np.array(ImageGrab.grab(rect)), cv2.COLOR_RGB2BGR)
-                        elif self.window_capture_method == WINDOW_CAPTURE_EXPERIMENTAL:
-                            # Get window rectangle
-                            window_rect = win32gui.GetWindowRect(self.hwnd)
-                            w = window_rect[2] - window_rect[0]
-                            h = window_rect[3] - window_rect[1]
+                        elif self.window_capture_method == WINDOW_CAPTURE_QT:
+                            # Get window image using PyQt5 grabWindow() function
+                            window_image = qimage2ndarray. \
+                                rgb_view(QPixmap(QApplication.primaryScreen().grabWindow(self.hwnd)).toImage())
 
-                            # Get the window image data
-                            self.window_dc = win32gui.GetWindowDC(self.hwnd)
-                            self.dc_object = win32ui.CreateDCFromHandle(self.window_dc)
-                            self.c_dc = self.dc_object.CreateCompatibleDC()
-                            self.data_bitmap = win32ui.CreateBitmap()
-                            self.data_bitmap.CreateCompatibleBitmap(self.dc_object, w, h)
-                            self.c_dc.SelectObject(self.data_bitmap)
-                            self.c_dc.BitBlt((0, 0), (w, h), self.dc_object, (0, 0), win32con.SRCCOPY)
+                            # Check image
+                            if window_image is not None \
+                                    and window_image.shape[0] > 10 and window_image.shape[1] > 10 \
+                                    and window_image.shape[2] == 3 \
+                                    and (cv2.countNonZero(window_image[:, :, 0]) > 0
+                                         or cv2.countNonZero(window_image[:, :, 1]) > 0
+                                         or cv2.countNonZero(window_image[:, :, 2]) > 0):
 
-                            # Convert the raw data into a format opencv can read
-                            signed_ints_array = self.data_bitmap.GetBitmapBits(True)
-                            img = np.fromstring(signed_ints_array, dtype='uint8')
-                            img.shape = (h, w, 4)
-                            img = img[..., :3]
-                            window_image = np.ascontiguousarray(img)
+                                # Convert to BGR
+                                window_image = cv2.cvtColor(window_image, cv2.COLOR_RGB2BGR)
+
+                            # No window image -> error
+                            else:
+                                window_image = black_frame.copy()
+                                error = True
                     else:
                         allow_fake_screen = False
-                except:
+                except Exception as e:
+                    logging.exception(e)
                     logging.error("Can't get window image!")
                     window_image = black_frame.copy()
                     error = True
@@ -967,17 +965,17 @@ class OpenCVHandler:
         if filter_factor >= 1.:
             filter_factor = 0.99
 
-        self.tl_filtered = [self.tl_filtered[0] * filter_factor + tl_f[0] * (1. - filter_factor)
-            , self.tl_filtered[1] * filter_factor + tl_f[1] * (1. - filter_factor)]
+        self.tl_filtered = [self.tl_filtered[0] * filter_factor + tl_f[0] * (1. - filter_factor),
+                            self.tl_filtered[1] * filter_factor + tl_f[1] * (1. - filter_factor)]
 
-        self.tr_filtered = [self.tr_filtered[0] * filter_factor + tr_f[0] * (1. - filter_factor)
-            , self.tr_filtered[1] * filter_factor + tr_f[1] * (1. - filter_factor)]
+        self.tr_filtered = [self.tr_filtered[0] * filter_factor + tr_f[0] * (1. - filter_factor),
+                            self.tr_filtered[1] * filter_factor + tr_f[1] * (1. - filter_factor)]
 
-        self.br_filtered = [self.br_filtered[0] * filter_factor + br_f[0] * (1. - filter_factor)
-            , self.br_filtered[1] * filter_factor + br_f[1] * (1. - filter_factor)]
+        self.br_filtered = [self.br_filtered[0] * filter_factor + br_f[0] * (1. - filter_factor),
+                            self.br_filtered[1] * filter_factor + br_f[1] * (1. - filter_factor)]
 
-        self.bl_filtered = [self.bl_filtered[0] * filter_factor + bl_f[0] * (1. - filter_factor)
-            , self.bl_filtered[1] * filter_factor + bl_f[1] * (1. - filter_factor)]
+        self.bl_filtered = [self.bl_filtered[0] * filter_factor + bl_f[0] * (1. - filter_factor),
+                            self.bl_filtered[1] * filter_factor + bl_f[1] * (1. - filter_factor)]
 
         # Convert back to int
         tl = [int(self.tl_filtered[0]), int(self.tl_filtered[1])]

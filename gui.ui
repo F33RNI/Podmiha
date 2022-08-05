@@ -45,7 +45,7 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-267</y>
+         <y>-121</y>
          <width>301</width>
          <height>1945</height>
         </rect>
@@ -249,9 +249,9 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_23">
           <item>
-           <widget class="QRadioButton" name="window_capture_stable">
+           <widget class="QRadioButton" name="window_capture_qt">
             <property name="text">
-             <string>Stable</string>
+             <string>Qt</string>
             </property>
             <property name="checked">
              <bool>true</bool>
@@ -262,9 +262,12 @@
            </widget>
           </item>
           <item>
-           <widget class="QRadioButton" name="window_capture_experimental">
+           <widget class="QRadioButton" name="window_capture_old">
             <property name="text">
-             <string>Experimental</string>
+             <string>Old</string>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">buttonGroup</string>
@@ -1545,8 +1548,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup_3"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="buttonGroup_3"/>
   <buttongroup name="buttonGroup_2"/>
  </buttongroups>
 </ui>

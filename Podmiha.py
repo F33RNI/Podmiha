@@ -25,6 +25,7 @@ import sys
 
 import numpy as np
 import psutil
+import win32con
 import win32gui
 from PIL import ImageGrab
 from PyQt5 import uic, QtGui, QtCore
@@ -46,8 +47,6 @@ import TelegramHandler
 import VirtualCamera
 import winguiauto
 
-# TODO: Add foot controller
-# TODO: Add ARUco filtration
 # TODO: Increase speed of edge blurring (and enable it)
 # TODO: Add brightness / contrast adjust of output image
 # TODO: Add RTSP stream
@@ -173,8 +172,8 @@ class Window(QMainWindow):
         self.camera_focus_auto.clicked.connect(self.write_settings)
         self.fake_screen_checkbox.clicked.connect(self.write_settings)
         self.windows_titles.currentTextChanged.connect(self.update_settings)
-        self.window_capture_stable.clicked.connect(self.write_settings)
-        self.window_capture_experimental.clicked.connect(self.write_settings)
+        self.window_capture_old.clicked.connect(self.write_settings)
+        self.window_capture_qt.clicked.connect(self.write_settings)
         self.window_crop_left.valueChanged.connect(self.update_settings)
         self.window_crop_top.valueChanged.connect(self.update_settings)
         self.window_crop_right.valueChanged.connect(self.update_settings)
@@ -261,10 +260,10 @@ class Window(QMainWindow):
             # Window capture
             self.fake_screen_checkbox.setChecked(self.settings_handler.settings["fake_screen"])
             self.refresh_windows()
-            self.window_capture_stable.setChecked(int(self.settings_handler.settings["window_capture_method"])
-                                                  == OpenCVHandler.WINDOW_CAPTURE_STABLE)
-            self.window_capture_experimental.setChecked(int(self.settings_handler.settings["window_capture_method"])
-                                                        == OpenCVHandler.WINDOW_CAPTURE_EXPERIMENTAL)
+            self.window_capture_old.setChecked(int(self.settings_handler.settings["window_capture_method"])
+                                               == OpenCVHandler.WINDOW_CAPTURE_OLD)
+            self.window_capture_qt.setChecked(int(self.settings_handler.settings["window_capture_method"])
+                                              == OpenCVHandler.WINDOW_CAPTURE_QT)
             self.window_crop_left.setValue(int(self.settings_handler.settings["window_crop"][0]))
             self.window_crop_top.setValue(int(self.settings_handler.settings["window_crop"][1]))
             self.window_crop_right.setValue(int(self.settings_handler.settings["window_crop"][2]))
@@ -354,8 +353,8 @@ class Window(QMainWindow):
         # Window capture
         self.settings_handler.settings["fake_screen"] = self.fake_screen_checkbox.isChecked()
         self.settings_handler.settings["window_title"] = str(self.windows_titles.currentText())
-        self.settings_handler.settings["window_capture_method"] = OpenCVHandler.WINDOW_CAPTURE_STABLE \
-            if self.window_capture_stable.isChecked() else OpenCVHandler.WINDOW_CAPTURE_EXPERIMENTAL
+        self.settings_handler.settings["window_capture_method"] = OpenCVHandler.WINDOW_CAPTURE_OLD \
+            if self.window_capture_old.isChecked() else OpenCVHandler.WINDOW_CAPTURE_QT
         self.settings_handler.settings["window_crop"][0] = int(self.window_crop_left.value())
         self.settings_handler.settings["window_crop"][1] = int(self.window_crop_top.value())
         self.settings_handler.settings["window_crop"][2] = int(self.window_crop_right.value())
@@ -632,18 +631,22 @@ class Window(QMainWindow):
             win32gui.EnumWindows(winguiauto._windowEnumerationHandler, windows)
             for hwnd, windowText, windowClass in windows:
                 # Check if window is visible and not null
-                if str(windowText).lower() != ("Podmiha " + APP_VERSION).lower() \
+                if "podmiha" not in str(windowText).lower() \
                         and win32gui.IsWindowVisible(hwnd) \
                         and len(str(windowText)) > 0 and hwnd is not None:
                     try:
-                        # Get test image
-                        rect = win32gui.GetWindowPlacement(hwnd)[-1]
-                        image = np.array(ImageGrab.grab(rect))
+                        # Get window placement
+                        placement = win32gui.GetWindowPlacement(hwnd)
 
-                        # Check if window is real
-                        if image.shape[0] > 10 and image.shape[1] > 10:
-                            # Add to list
-                            self.available_windows_titles.append(str(windowText))
+                        # Append only normal or maximized windows
+                        if placement[1] == win32con.SW_SHOWNORMAL or placement[1] == win32con.SW_SHOWMAXIMIZED:
+                            # Get test image
+                            image = np.array(ImageGrab.grab(placement[-1]))
+
+                            # Check if window is real
+                            if image.shape[0] > 10 and image.shape[1] > 10:
+                                # Add to list
+                                self.available_windows_titles.append(str(windowText))
                     except:
                         pass
 
@@ -765,6 +768,13 @@ if __name__ == "__main__":
 
     # Start app
     try:
+        # date = datetime.datetime.now()
+        # filename = date.strftime('%Y-%m-%d_%H-%M-%S.jpg')
+        # QScreen.grabWindow(app.primaryScreen(),
+        #              QApplication.desktop().winId()).save(filename, 'png')
+        #
+        # print(QGuiApplication.screens())
+
         app = QApplication(sys.argv)
         app.setStyle("fusion")
         win = Window()

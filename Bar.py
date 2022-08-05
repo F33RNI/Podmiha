@@ -51,6 +51,9 @@ class Bar(PyQt5.QtWidgets.QWidget):
                             | QtCore.Qt.BypassWindowManagerHint
                             | QtCore.Qt.X11BypassWindowManagerHint)
 
+        # Set window title
+        self.setWindowTitle("Podmiha bar")
+
         # Create first QApplication if no created
         if PyQt5.QtWidgets.QApplication.instance() is None:
             PyQt5.QtWidgets.QApplication(sys.argv)

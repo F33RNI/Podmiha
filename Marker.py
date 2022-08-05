@@ -88,7 +88,7 @@ class Marker(PyQt5.QtWidgets.QLabel):
                     self.one_block_pixels:self.size_ + self.one_block_pixels] = marker_image[:, :, 0]
 
         # Set window title
-        self.setWindowTitle("ARUco ID " + str(marker_id))
+        self.setWindowTitle("Podmiha ARUco ID " + str(marker_id))
 
         # Get margins
         margin_left = int(margins[0])

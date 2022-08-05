@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>666</width>
-    <height>415</height>
+    <width>686</width>
+    <height>390</height>
    </rect>
   </property>
   <property name="font">
@@ -27,15 +27,21 @@
     <item>
      <widget class="QScrollArea" name="scrollArea">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+       <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
       <property name="minimumSize">
        <size>
-        <width>320</width>
+        <width>340</width>
         <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>16777215</height>
        </size>
       </property>
       <property name="widgetResizable">
@@ -45,8 +51,8 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-121</y>
-         <width>301</width>
+         <y>0</y>
+         <width>321</width>
          <height>1945</height>
         </rect>
        </property>
@@ -1364,6 +1370,12 @@
     </item>
     <item>
      <layout class="QVBoxLayout" name="verticalLayout_3">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="sizeConstraint">
+       <enum>QLayout::SetDefaultConstraint</enum>
+      </property>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_8">
         <item>
@@ -1442,8 +1454,14 @@
         </property>
         <property name="minimumSize">
          <size>
-          <width>320</width>
-          <height>180</height>
+          <width>50</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="sizeIncrement">
+         <size>
+          <width>0</width>
+          <height>0</height>
          </size>
         </property>
         <property name="styleSheet">
@@ -1505,10 +1523,16 @@
         <item>
          <widget class="QPlainTextEdit" name="log">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <sizepolicy hsizetype="Expanding" vsizetype="Ignored">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>50</width>
+            <height>50</height>
+           </size>
           </property>
           <property name="maximumSize">
            <size>
@@ -1538,7 +1562,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>666</width>
+     <width>686</width>
      <height>21</height>
     </rect>
    </property>
@@ -1548,8 +1572,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="buttonGroup_3"/>
   <buttongroup name="buttonGroup_2"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>

@@ -55,6 +55,8 @@ SETTINGS_DEFAULT = {
     "virtual_camera_enabled": False,
     "http_stream_enabled": False,
     "output_size": [960, 540],
+    "output_brightness": 0,
+    "output_contrast": 1.,
     "output_blur_radius": 1,
     "output_noise_amount": 0.,
     "http_server_ip": "localhost",

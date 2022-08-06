@@ -48,9 +48,7 @@ import VirtualCamera
 import winguiauto
 
 # TODO: Increase speed of edge blurring (and enable it)
-# TODO: Add brightness / contrast adjust of output image
 # TODO: Add RTSP stream
-
 # https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.3
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
 
@@ -204,6 +202,8 @@ class Window(QMainWindow):
         self.aruco_detector_parameters.textChanged.connect(self.update_settings)
         self.virtual_camera_enabled.clicked.connect(self.write_settings)
         self.http_stream_enabled.clicked.connect(self.write_settings)
+        self.output_brightness.valueChanged.connect(self.update_settings)
+        self.output_contrast.valueChanged.connect(self.update_settings)
         self.output_blur_radius.valueChanged.connect(self.update_settings)
         self.noise_amount.valueChanged.connect(self.update_settings)
         self.http_server_ip.textChanged.connect(self.update_settings)
@@ -306,6 +306,8 @@ class Window(QMainWindow):
             self.http_stream_enabled.setChecked(self.settings_handler.settings["http_stream_enabled"])
             self.output_width.setValue(int(self.settings_handler.settings["output_size"][0]))
             self.output_height.setValue(int(self.settings_handler.settings["output_size"][1]))
+            self.output_brightness.setValue(int(self.settings_handler.settings["output_brightness"]))
+            self.output_contrast.setValue(float(self.settings_handler.settings["output_contrast"]))
             self.output_blur_radius.setValue(int(self.settings_handler.settings["output_blur_radius"]))
             self.noise_amount.setValue(float(self.settings_handler.settings["output_noise_amount"]))
             self.http_server_ip.setText(self.settings_handler.settings["http_server_ip"])
@@ -397,6 +399,8 @@ class Window(QMainWindow):
         self.settings_handler.settings["http_stream_enabled"] = self.http_stream_enabled.isChecked()
         self.settings_handler.settings["output_size"][0] = int(self.output_width.value())
         self.settings_handler.settings["output_size"][1] = int(self.output_height.value())
+        self.settings_handler.settings["output_brightness"] = int(self.output_brightness.value())
+        self.settings_handler.settings["output_contrast"] = float(self.output_contrast.value())
         self.settings_handler.settings["output_blur_radius"] = int(self.output_blur_radius.value())
         self.settings_handler.settings["output_noise_amount"] = float(self.noise_amount.value())
         self.settings_handler.settings["http_server_ip"] = str(self.http_server_ip.text())

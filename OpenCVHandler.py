@@ -272,6 +272,8 @@ class OpenCVHandler:
         self.aruco_image = None
         self.window_contrast = 0.
         self.window_brightness = 0
+        self.output_contrast = 0.
+        self.output_brightness = 0
 
         # Use 4x4 50 ARUco dictionary
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
@@ -341,6 +343,8 @@ class OpenCVHandler:
         self.aruco_filter_enabled = self.settings_handler.settings["aruco_filter_enabled"]
         self.window_contrast = float(self.settings_handler.settings["window_contrast"])
         self.window_brightness = int(self.settings_handler.settings["window_brightness"])
+        self.output_brightness = int(self.settings_handler.settings["output_brightness"])
+        self.output_contrast = int(self.settings_handler.settings["output_contrast"])
 
         parameters = str(self.settings_handler.settings["aruco_detector_parameters"]).replace(" ", "").split(",")
         if len(parameters) is not 11:
@@ -843,6 +847,10 @@ class OpenCVHandler:
 
                 # Add effects only on non-black output frame
                 if not is_output_frame_black:
+                    # Apply contrast and brightness
+                    output_frame = cv2.addWeighted(output_frame, self.output_contrast, output_frame, 0.,
+                                                   self.output_brightness)
+
                     # Add blur
                     # noinspection PyBroadException
                     try:

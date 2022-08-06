@@ -344,7 +344,7 @@ class OpenCVHandler:
         self.window_contrast = float(self.settings_handler.settings["window_contrast"])
         self.window_brightness = int(self.settings_handler.settings["window_brightness"])
         self.output_brightness = int(self.settings_handler.settings["output_brightness"])
-        self.output_contrast = int(self.settings_handler.settings["output_contrast"])
+        self.output_contrast = float(self.settings_handler.settings["output_contrast"])
 
         parameters = str(self.settings_handler.settings["aruco_detector_parameters"]).replace(" ", "").split(",")
         if len(parameters) is not 11:

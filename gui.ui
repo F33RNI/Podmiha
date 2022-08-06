@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>686</width>
-    <height>390</height>
+    <width>713</width>
+    <height>395</height>
    </rect>
   </property>
   <property name="font">
@@ -23,7 +23,7 @@
    <enum>Qt::LeftToRight</enum>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout_35">
+   <layout class="QHBoxLayout" name="horizontalLayout_38">
     <item>
      <widget class="QScrollArea" name="scrollArea">
       <property name="sizePolicy">
@@ -51,9 +51,9 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>0</y>
+         <y>-601</y>
          <width>321</width>
-         <height>1945</height>
+         <height>2011</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -537,9 +537,60 @@
         <item>
          <widget class="QCheckBox" name="brightness_gradient">
           <property name="text">
-           <string>Brightness gradient</string>
+           <string>Color gradient</string>
           </property>
          </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_36">
+          <item>
+           <widget class="QLabel" name="label_51">
+            <property name="text">
+             <string>Window contrast:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="window_contrast">
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="minimum">
+             <double>0.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.010000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_37">
+          <item>
+           <widget class="QLabel" name="label_52">
+            <property name="text">
+             <string>Window brightness:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="window_brightness">
+            <property name="minimum">
+             <number>-255</number>
+            </property>
+            <property name="maximum">
+             <number>255</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
         <item>
          <widget class="QCheckBox" name="aruco_invert_checkbox">
@@ -1381,7 +1432,7 @@
         <item>
          <widget class="QLabel" name="label_3">
           <property name="text">
-           <string>Preview mode:</string>
+           <string>Preview:</string>
           </property>
          </widget>
         </item>
@@ -1417,6 +1468,25 @@
           </property>
           <property name="autoRepeat">
            <bool>true</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_3</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="aruco_image_mode">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>ARUco</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
           </property>
           <attribute name="buttonGroup">
            <string notr="true">buttonGroup_3</string>
@@ -1562,7 +1632,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>686</width>
+     <width>713</width>
      <height>21</height>
     </rect>
    </property>

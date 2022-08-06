@@ -55,7 +55,7 @@ import winguiauto
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
 
 
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.5.0"
 
 SETTINGS_FILE = "settings.json"
 
@@ -107,6 +107,7 @@ class Window(QMainWindow):
         self.btn_show_fullscreen.clicked.connect(self.show_fullscreen)
         self.input_image_mode.clicked.connect(self.change_preview_mode)
         self.window_image_mode.clicked.connect(self.change_preview_mode)
+        self.aruco_image_mode.clicked.connect(self.change_preview_mode)
         self.output_image_mode.clicked.connect(self.change_preview_mode)
         self.btn_audio_open_close.clicked.connect(self.audio_open_close)
         self.btn_serial_controller_port_refresh.clicked.connect(self.refresh_serial_ports)
@@ -186,6 +187,8 @@ class Window(QMainWindow):
         self.stretch_scale_x.valueChanged.connect(self.update_settings)
         self.stretch_scale_y.valueChanged.connect(self.update_settings)
         self.brightness_gradient.clicked.connect(self.write_settings)
+        self.window_contrast.valueChanged.connect(self.update_settings)
+        self.window_brightness.valueChanged.connect(self.update_settings)
         self.aruco_size.valueChanged.connect(self.update_settings)
         self.aruco_invert_checkbox.clicked.connect(self.write_settings)
         self.aruco_margin_left.valueChanged.connect(self.update_settings)
@@ -271,6 +274,8 @@ class Window(QMainWindow):
             self.stretch_scale_x.setValue(float(self.settings_handler.settings["stretch_scale"][0]))
             self.stretch_scale_y.setValue(float(self.settings_handler.settings["stretch_scale"][1]))
             self.brightness_gradient.setChecked(self.settings_handler.settings["brightness_gradient"])
+            self.window_contrast.setValue(float(self.settings_handler.settings["window_contrast"]))
+            self.window_brightness.setValue(int(self.settings_handler.settings["window_brightness"]))
             self.fake_type_aruco.setChecked(int(self.settings_handler.settings["fake_mode"])
                                             == OpenCVHandler.FAKE_MODE_ARUCO)
             self.fake_type_flicker.setChecked(int(self.settings_handler.settings["fake_mode"])
@@ -362,6 +367,8 @@ class Window(QMainWindow):
         self.settings_handler.settings["stretch_scale"][0] = float(self.stretch_scale_x.value())
         self.settings_handler.settings["stretch_scale"][1] = float(self.stretch_scale_y.value())
         self.settings_handler.settings["brightness_gradient"] = self.brightness_gradient.isChecked()
+        self.settings_handler.settings["window_contrast"] = float(self.window_contrast.value())
+        self.settings_handler.settings["window_brightness"] = int(self.window_brightness.value())
         self.settings_handler.settings["fake_mode"] = OpenCVHandler.FAKE_MODE_FLICKER \
             if self.fake_type_flicker.isChecked() else OpenCVHandler.FAKE_MODE_ARUCO
 
@@ -723,6 +730,8 @@ class Window(QMainWindow):
             self.opencv_handler.set_preview_mode(OpenCVHandler.PREVIEW_SOURCE)
         elif self.window_image_mode.isChecked():
             self.opencv_handler.set_preview_mode(OpenCVHandler.PREVIEW_WINDOW)
+        elif self.aruco_image_mode.isChecked():
+            self.opencv_handler.set_preview_mode(OpenCVHandler.PREVIEW_ARUCO)
         elif self.output_image_mode.isChecked():
             self.opencv_handler.set_preview_mode(OpenCVHandler.PREVIEW_OUTPUT)
 

@@ -43,6 +43,8 @@ SETTINGS_DEFAULT = {
     "frame_blending": False,
     "stretch_scale": [1., 1.],
     "brightness_gradient": True,
+    "window_contrast": 1.,
+    "window_brightness": 0,
     "aruco_size": 200,
     "aruco_invert": True,
     "aruco_margins": [0, 0, 0, 0],

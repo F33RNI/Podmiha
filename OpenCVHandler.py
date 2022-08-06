@@ -45,6 +45,7 @@ DEFAULT_DETECTOR_PARAMETERS = "10, 30, 1, 0.05, 5, 0.1, 4, 0.35, 0.6, 10, 23"
 PREVIEW_OUTPUT = 0
 PREVIEW_WINDOW = 1
 PREVIEW_SOURCE = 2
+PREVIEW_ARUCO = 3
 
 FAKE_MODE_ARUCO = 0
 FAKE_MODE_FLICKER = 1
@@ -168,89 +169,35 @@ def stretch_to(list_, target_length: int):
     return out
 
 
-def calculate_and_apply_brightness(marker_tl, marker_tr, marker_br, marker_bl, input_gray,
-                                   window_image, use_gradient=False):
-    # Calculate max white value
-    # Top left
-    aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
-    cv2.drawContours(aruco_mask, [np.array([marker_tl], dtype=int)], -1, (255, 255, 255), -1)
-    masked = cv2.bitwise_and(input_gray, aruco_mask)
-    max_white_tl = int(masked.max())
+def get_marker_white_color(image, marker_corners):
+    """
+    Calculates average color of "white" pixels inside marker
+    :param image: source image from which corners is found
+    :param marker_corners: corners of the marker
+    :return:
+    """
+    # Find marker bounding rectangle
+    rect = cv2.boundingRect(marker_corners)
+    x, y, w, h = rect
 
-    # Top right
-    aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
-    cv2.drawContours(aruco_mask, [np.array([marker_tr], dtype=int)], -1, (255, 255, 255), -1)
-    masked = cv2.bitwise_and(input_gray, aruco_mask)
-    max_white_tr = int(masked.max())
+    # Create marker mask
+    mask = np.zeros((h, w), dtype=image.dtype)
+    cv2.drawContours(mask, [np.array([marker_corners], dtype=int)], -1, 255, -1, offset=(-x, -y))
 
-    # Bottom right
-    aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
-    cv2.drawContours(aruco_mask, [np.array([marker_br], dtype=int)], -1, (255, 255, 255), -1)
-    masked = cv2.bitwise_and(input_gray, aruco_mask)
-    max_white_br = int(masked.max())
+    # Create masked marker image
+    marker_masked = image[y: y + h, x: x + w]
+    marker_masked = cv2.bitwise_or(marker_masked, marker_masked, mask=mask)
+    marker_masked_gray = cv2.cvtColor(marker_masked, cv2.COLOR_BGR2GRAY)
 
-    # Bottom left
-    aruco_mask = np.zeros(input_gray.shape, dtype=input_gray.dtype)
-    cv2.drawContours(aruco_mask, [np.array([marker_bl], dtype=int)], -1, (255, 255, 255), -1)
-    masked = cv2.bitwise_and(input_gray, aruco_mask)
-    max_white_bl = int(masked.max())
+    # Create mask of white pixels inside marker
+    mask_threshold = cv2.threshold(marker_masked_gray,
+                                   int(cv2.mean(marker_masked_gray, mask)[0]), 255, cv2.THRESH_BINARY)[1]
 
-    # Calculate average white values
-    white_left = (max_white_tl + max_white_bl) // 2
-    white_top = (max_white_tl + max_white_tr) // 2
-    white_right = (max_white_tr + max_white_br) // 2
-    white_bottom = (max_white_bl + max_white_br) // 2
+    # Find mean white color
+    mean_color = cv2.mean(marker_masked, mask_threshold)
 
-    # Brightness gradient
-    if use_gradient:
-        # Create horizontal gradient
-        if white_left > white_right:
-            horizontal_brightness_gradient = list(range(white_right, white_left + 1))
-            horizontal_brightness_gradient.reverse()
-        else:
-            horizontal_brightness_gradient = list(range(white_left, white_right + 1))
-
-        # Create vertical gradient
-        if white_top > white_bottom:
-            vertical_brightness_gradient = list(range(white_bottom, white_top + 1))
-            vertical_brightness_gradient.reverse()
-        else:
-            vertical_brightness_gradient = list(range(white_top, white_bottom + 1))
-
-        # Stretch gradients to match window image size
-        horizontal_brightness_gradient = stretch_to(horizontal_brightness_gradient,
-                                                    window_image.shape[1])
-        vertical_brightness_gradient = stretch_to(vertical_brightness_gradient,
-                                                  window_image.shape[0])
-
-        # Tile gradients to 2D images
-        horizontal_brightness_gradient = np.array([horizontal_brightness_gradient], dtype=window_image.dtype)
-        horizontal_brightness_gradient = np.tile(horizontal_brightness_gradient, (window_image.shape[0], 1))
-        vertical_brightness_gradient = np.array([vertical_brightness_gradient], dtype=window_image.dtype)
-        vertical_brightness_gradient = np.tile(vertical_brightness_gradient, (window_image.shape[1], 1))
-        vertical_brightness_gradient = np.transpose(vertical_brightness_gradient)
-
-        # Combine gradients
-        brightness_gradient = cv2.addWeighted(horizontal_brightness_gradient, 0.5,
-                                              vertical_brightness_gradient, 0.5, 0.)
-
-        # Apply blur
-        # brightness_gradient = cv2.GaussianBlur(brightness_gradient, (49, 49), 0)
-
-        # Add brightness gradient
-        window_image_hsv = cv2.cvtColor(window_image, cv2.COLOR_BGR2HSV)
-        window_image_hsv[:, :, 2] = cv2.bitwise_and(window_image_hsv[:, :, 2], brightness_gradient)
-
-    # Average brightness
-    else:
-        # Calculate average brightness
-        average_brightness = (white_left + white_top + white_right + white_bottom) // 4
-
-        # Add average brightness
-        window_image_hsv = cv2.cvtColor(window_image, cv2.COLOR_BGR2HSV)
-        window_image_hsv[:, :, 2] = cv2.bitwise_and(window_image_hsv[:, :, 2], average_brightness)
-
-    return cv2.cvtColor(window_image_hsv, cv2.COLOR_HSV2BGR)
+    # Return BGR color as integer
+    return int(mean_color[0]), int(mean_color[1]), int(mean_color[2])
 
 
 class OpenCVHandler:
@@ -322,6 +269,9 @@ class OpenCVHandler:
         self.camera_distortions = None
         self.aruco_filter_scale = 0
         self.aruco_filter_enabled = False
+        self.aruco_image = None
+        self.window_contrast = 0.
+        self.window_brightness = 0
 
         # Use 4x4 50 ARUco dictionary
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
@@ -389,6 +339,8 @@ class OpenCVHandler:
         self.brightness_gradient_enabled = self.settings_handler.settings["brightness_gradient"]
         self.aruco_filter_scale = float(self.settings_handler.settings["aruco_filter_scale"])
         self.aruco_filter_enabled = self.settings_handler.settings["aruco_filter_enabled"]
+        self.window_contrast = float(self.settings_handler.settings["window_contrast"])
+        self.window_brightness = int(self.settings_handler.settings["window_brightness"])
 
         parameters = str(self.settings_handler.settings["aruco_detector_parameters"]).replace(" ", "").split(",")
         if len(parameters) is not 11:
@@ -511,6 +463,7 @@ class OpenCVHandler:
         black_frame = np.zeros((1280, 720, 3), dtype=np.uint8)
         flicker_key_frame_1 = None
         flicker_key_frame_2 = None
+        self.aruco_image = black_frame.copy()
 
         noise = cv2.VideoCapture(VIDEO_NOISE_FILE)
 
@@ -684,7 +637,6 @@ class OpenCVHandler:
                         # Disable fake screen
                         allow_fake_screen = False
                 except Exception as e:
-                    print(e)
                     input_ret = False
                     error = True
 
@@ -741,6 +693,32 @@ class OpenCVHandler:
                                 marker_br = corners[ids_list.index(2)][0]
                                 marker_bl = corners[ids_list.index(3)][0]
 
+                                # Get preview of top-left marker
+                                rect = cv2.boundingRect(marker_tl)
+                                aruco_image_tl = cv2.resize(self.input_frame[rect[1]: rect[1] + rect[3],
+                                                            rect[0]: rect[0] + rect[2]],
+                                                            (self.aruco_size, self.aruco_size))
+                                rect = cv2.boundingRect(marker_tr)
+                                aruco_image_tr = cv2.resize(self.input_frame[rect[1]: rect[1] + rect[3],
+                                                            rect[0]: rect[0] + rect[2]],
+                                                            (self.aruco_size, self.aruco_size))
+                                rect = cv2.boundingRect(marker_br)
+                                aruco_image_br = cv2.resize(self.input_frame[rect[1]: rect[1] + rect[3],
+                                                            rect[0]: rect[0] + rect[2]],
+                                                            (self.aruco_size, self.aruco_size))
+                                rect = cv2.boundingRect(marker_bl)
+                                aruco_image_bl = cv2.resize(self.input_frame[rect[1]: rect[1] + rect[3],
+                                                            rect[0]: rect[0] + rect[2]],
+                                                            (self.aruco_size, self.aruco_size))
+
+                                aruco_image = np.zeros((self.aruco_size * 2, self.aruco_size * 2, 3),
+                                                       dtype=self.input_frame.dtype)
+                                aruco_image[: self.aruco_size, : self.aruco_size] = aruco_image_tl
+                                aruco_image[: self.aruco_size, self.aruco_size:] = aruco_image_tr
+                                aruco_image[self.aruco_size:, self.aruco_size:] = aruco_image_br
+                                aruco_image[self.aruco_size:, : self.aruco_size] = aruco_image_bl
+                                self.aruco_image = aruco_image
+
                                 # Calculate final screen coordinates
                                 # tl = self.get_marker_point(marker_tl, Marker.POSITION_TOP_LEFT)
                                 # tr = self.get_marker_point(marker_tr, Marker.POSITION_TOP_RIGHT)
@@ -761,12 +739,27 @@ class OpenCVHandler:
                                 source_height = self.input_frame.shape[0]
                                 source_width = self.input_frame.shape[1]
 
-                                # Apply brightness gradient to image
-                                window_image = calculate_and_apply_brightness(marker_tl, marker_tr,
-                                                                              marker_br, marker_bl,
-                                                                              input_gray,
-                                                                              self.window_image,
-                                                                              self.brightness_gradient_enabled)
+                                # Color gradient
+                                if self.brightness_gradient_enabled:
+                                    # Create 2x2 color gradient
+                                    color_gradient = np.zeros((2, 2, 3), dtype=self.input_frame.dtype)
+                                    color_gradient[0, 0, :] = get_marker_white_color(self.input_frame, marker_tl)
+                                    color_gradient[0, 1, :] = get_marker_white_color(self.input_frame, marker_tr)
+                                    color_gradient[1, 1, :] = get_marker_white_color(self.input_frame, marker_br)
+                                    color_gradient[1, 0, :] = get_marker_white_color(self.input_frame, marker_bl)
+
+                                    # Stretch to window size
+                                    color_gradient = cv2.resize(color_gradient,
+                                                                (window_image.shape[1], window_image.shape[0]),
+                                                                cv2.INTER_LINEAR)
+
+                                    # Apply brightness gradient
+                                    color_gradient = cv2.bitwise_not(color_gradient)
+                                    window_image = cv2.subtract(window_image, color_gradient)
+
+                                # Apply contrast and brightness
+                                window_image = cv2.addWeighted(window_image, self.window_contrast, window_image, 0.,
+                                                               self.window_brightness)
 
                                 # Source points (full size of overlay image)
                                 points_src = np.array([
@@ -997,6 +990,10 @@ class OpenCVHandler:
         # Preview window
         elif self.preview_mode == PREVIEW_WINDOW:
             preview_image = self.window_image
+
+        # Preview aruco
+        elif self.preview_mode == PREVIEW_ARUCO:
+            preview_image = self.aruco_image
 
         # Preview source
         else:

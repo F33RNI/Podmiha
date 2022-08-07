@@ -671,7 +671,8 @@ class Window(QMainWindow):
         Temporarily opens a screenshot of a window in full screen
         :return:
         """
-        self.flicker.open_fullscreen(self.opencv_handler.get_window_image())
+        self.flicker.set_force_fullscreen_enabled(True)
+        self.flicker.open_()
 
     def setup_logger(self):
         """

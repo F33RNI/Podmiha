@@ -502,7 +502,7 @@ class OpenCVHandler:
                 try:
                     if self.window_capture_allowed and self.hwnd is not None:
                         if self.window_capture_method == WINDOW_CAPTURE_OLD:
-                            # Don't update window image in fullscreen mode with stable capture mode
+                            # Don't update window image in fullscreen mode with old capture mode
                             if not self.flicker.is_force_fullscreen_enabled():
                                 rect = win32gui.GetWindowPlacement(self.hwnd)[-1]
                                 window_image = cv2.cvtColor(np.array(ImageGrab.grab(rect)), cv2.COLOR_RGB2BGR)
@@ -554,7 +554,7 @@ class OpenCVHandler:
 
                             # Flick!
                             if self.flick_counter == self.flicker_interval:
-                                self.flicker.flick_frame_start(self.window_image)
+                                self.flicker.open_()
 
                             # Counter ended
                             elif self.flick_counter >= self.flicker_interval + self.flicker_duration:
@@ -581,7 +581,7 @@ class OpenCVHandler:
                                         and real_image[self.flicker.height_ - 1, self.flicker.width_ - 1, 1] == 0 \
                                         and real_image[self.flicker.height_ - 1, self.flicker.width_ - 1, 2] == 255:
                                     # Stop flicking
-                                    self.flicker.flick_frame_stop()
+                                    self.flicker.close_()
 
                                     # Retrieve frame
                                     input_ret, flicker_key_frame_2 = self.video_capture.read()
@@ -610,7 +610,7 @@ class OpenCVHandler:
                         # No flicker fake
                         else:
                             # Stop flicking
-                            self.flicker.flick_frame_stop()
+                            self.flicker.close_()
 
                             # Reset flick variables
                             self.flick_counter = 0
@@ -632,7 +632,7 @@ class OpenCVHandler:
 
                         # Stop flicking
                         if self.fake_mode == FAKE_MODE_FLICKER:
-                            self.flicker.flick_frame_stop()
+                            self.flicker.close_()
 
                         # Reset flicker variables
                         flicker_key_frame_1 = None
@@ -640,7 +640,7 @@ class OpenCVHandler:
 
                         # Disable fake screen
                         allow_fake_screen = False
-                except Exception as e:
+                except:
                     input_ret = False
                     error = True
 
@@ -1023,6 +1023,9 @@ class OpenCVHandler:
 
             # Push to preview
             self.update_preview.emit(pixmap)
+
+            # Push to Flicker class
+            self.flicker.set_frame(self.window_image)
 
             # Push to http server
             self.http_stream.set_frame(self.final_output_frame)

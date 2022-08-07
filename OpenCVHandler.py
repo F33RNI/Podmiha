@@ -540,8 +540,8 @@ class OpenCVHandler:
 
                 # Crop window image
                 self.window_image = window_image[
-                                    self.crop_top:window_image.shape[0] - self.crop_top - self.crop_bottom,
-                                    self.crop_left:window_image.shape[1] - self.crop_left - self.crop_right]
+                                    self.crop_top:window_image.shape[0] - self.crop_bottom,
+                                    self.crop_left:window_image.shape[1] - self.crop_right]
 
                 # Grab the current camera frame
                 # noinspection PyBroadException

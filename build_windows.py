@@ -22,6 +22,7 @@
 import os
 import shutil
 import subprocess
+import sys
 
 import cv2
 
@@ -41,7 +42,8 @@ INCLUDE_FILES = ["icons",
                  "LICENSE",
                  "camera_calibration.py",
                  "camera_calibration.bat",
-                 "charuco_board.jpg"]
+                 "charuco_board.jpg",
+                 "audio_noise.raw"]
 
 # *.py files to exclude from final build
 EXCLUDE_FROM_BUILD = ["camera_calibration.py",
@@ -71,7 +73,9 @@ if __name__ == "__main__":
     pyi_command.insert(0, MAIN_FILE + ".py")
 
     # OpenCV path
-    opencv_path = str(os.path.dirname(cv2.__file__)).replace("\\", "/").replace("//", "/")
+    opencv_path = str(os.path.dirname(cv2.__file__))
+    opencv_path += "/python-" + str(sys.version_info[0]) + "." + str(sys.version_info[1])
+    opencv_path = opencv_path.replace("\\", "/").replace("//", "/")
     pyi_command.insert(0, opencv_path)
     pyi_command.insert(0, "--paths")
 

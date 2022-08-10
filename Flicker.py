@@ -20,12 +20,13 @@
 """
 import logging
 import sys
+import time
 
 import PyQt5
 import cv2
 import qimage2ndarray
 from PyQt5 import QtCore
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QApplication
 
 import SettingsHandler
@@ -61,7 +62,7 @@ class Flicker(PyQt5.QtWidgets.QLabel):
                             | QtCore.Qt.X11BypassWindowManagerHint)
 
         self.update_geometry.connect(self.setGeometry)
-        self.update_frame.connect(self.setPixmap)
+        self.update_frame.connect(self.setPixmap, QtCore.Qt.DirectConnection)
         self.signal_show.connect(self.show)
         self.signal_raise.connect(self.raise_)
 
@@ -102,18 +103,17 @@ class Flicker(PyQt5.QtWidgets.QLabel):
 
         if self.frame is not None:
             try:
-                # Resize and convert to RGB
+                # Resize
                 self.width_ = self.geometry_.width()
                 self.height_ = self.geometry_.height()
-                frame_with_sign = cv2.cvtColor(cv2.resize(self.frame, (self.width_, self.height_)),
-                                               cv2.COLOR_BGR2RGB)
+                frame_resized = cv2.resize(self.frame, (self.width_, self.height_))
 
-                # Frame signs
-                frame_with_sign[0, 0, :] = [0, 0, 255]
-                frame_with_sign[0, self.width_ - 1, :] = [0, 255, 0]
-                frame_with_sign[self.height_ - 1, self.width_ - 1, :] = [255, 0, 0]
+                # Convert to pixmap
+                pixmap = QPixmap.fromImage(
+                    QImage(frame_resized.data, self.width_, self.height_, 3 * self.width_, QImage.Format_BGR888))
 
-                self.update_frame.emit(QPixmap.fromImage(qimage2ndarray.array2qimage(frame_with_sign)))
+                # Update frame
+                self.update_frame.emit(pixmap)
             except Exception as e:
                 logging.exception(e)
                 logging.error("Error setting new frame to the Flicker class")

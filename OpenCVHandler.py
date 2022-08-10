@@ -31,9 +31,10 @@ import qimage2ndarray
 import win32gui
 from PIL import ImageGrab
 from PyQt5 import QtCore
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QApplication
 from cv2 import aruco
+from imutils.video import FileVideoStream
 
 import Controller
 import winguiauto
@@ -52,6 +53,9 @@ FAKE_MODE_FLICKER = 1
 
 WINDOW_CAPTURE_QT = 0
 WINDOW_CAPTURE_OLD = 1
+
+
+TIME_DEBUG = False
 
 
 def _map(x, in_min, in_max, out_min, out_max):
@@ -274,12 +278,31 @@ class OpenCVHandler:
         self.window_brightness = 0
         self.output_contrast = 0.
         self.output_brightness = 0
+        self.maximum_fps = 0
+        self.real_fps = 0
+        self.cuda_enabled = False
+
+        self.new_time = 0
 
         # Use 4x4 50 ARUco dictionary
         self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
 
         # ARUco detection parameters
         self.parameters = cv2.aruco.DetectorParameters_create()
+
+    def time_debug(self, tag: str, time_started):
+        """
+        Prints debug messages with time for performance debugging
+        :param tag: text of message
+        :param time_started: started time of OpenCV loop
+        :return:
+        """
+        if TIME_DEBUG:
+            tag = tag.ljust(20)[:20]
+            time_now = time.time()
+            print(tag + "\t" + "{:<4}".format(str(round(((time_now - self.new_time) * 1000), 2)))
+                  + "\t" + "{:<4}".format(str(round(((time_now - time_started) * 1000), 2))))
+            self.new_time = time_now
 
     def get_final_output_frame(self):
         return self.final_output_frame
@@ -461,6 +484,7 @@ class OpenCVHandler:
         Main OpenCV thread
         :return:
         """
+
         self.flick_counter = 0
         input_ret = False
         self.window_image = None
@@ -468,8 +492,9 @@ class OpenCVHandler:
         flicker_key_frame_1 = None
         flicker_key_frame_2 = None
         self.aruco_image = black_frame.copy()
-
-        noise = cv2.VideoCapture(VIDEO_NOISE_FILE)
+        noise_frame = black_frame.copy()
+        cuda_enabled = False
+        noise_stream = FileVideoStream(VIDEO_NOISE_FILE).start()
 
         while self.opencv_thread_running:
             try:
@@ -481,6 +506,17 @@ class OpenCVHandler:
 
                 # Record time
                 time_started = time.time()
+
+                # Initialize CUDA
+                cuda_enabled_new = self.cuda_enabled
+                if cuda_enabled_new and not cuda_enabled:
+                    logging.info("Initializing CUDA...")
+                    cv2.cuda.setDevice(0)
+                    gpu_output_frame = cv2.cuda_GpuMat()
+                    gpu_noise_frame = cv2.cuda_GpuMat()
+                cuda_enabled = cuda_enabled_new
+
+                self.time_debug("Initializing", time_started)
 
                 # Pause camera
                 if self.controller.get_request_camera_pause() or self.serial_controller.get_request_camera_pause():
@@ -543,6 +579,8 @@ class OpenCVHandler:
                                     self.crop_top:window_image.shape[0] - self.crop_bottom,
                                     self.crop_left:window_image.shape[1] - self.crop_right]
 
+                self.time_debug("Screen captured", time_started)
+
                 # Grab the current camera frame
                 # noinspection PyBroadException
                 try:
@@ -563,37 +601,14 @@ class OpenCVHandler:
                                     flicker_key_frame_1 = flicker_key_frame_2.copy()
                                 flicker_key_frame_2 = None
 
-                                # Check image
-                                x_1 = self.flicker.geometry().x()
-                                y_1 = self.flicker.geometry().y()
-                                x_2 = x_1 + self.flicker.geometry().width()
-                                y_2 = y_1 + self.flicker.geometry().height()
-                                real_image = cv2.resize(cv2.cvtColor(
-                                    np.array(ImageGrab.grab((x_1, y_1, x_2, y_2))), cv2.COLOR_RGB2BGR),
-                                    (self.flicker.width_, self.flicker.height_))
-                                if real_image[0, 0, 0] == 255 \
-                                        and real_image[0, 0, 1] == 0 \
-                                        and real_image[0, 0, 2] == 0 \
-                                        and real_image[0, self.flicker.width_ - 1, 0] == 0 \
-                                        and real_image[0, self.flicker.width_ - 1, 1] == 255 \
-                                        and real_image[0, self.flicker.width_ - 1, 2] == 0 \
-                                        and real_image[self.flicker.height_ - 1, self.flicker.width_ - 1, 0] == 0 \
-                                        and real_image[self.flicker.height_ - 1, self.flicker.width_ - 1, 1] == 0 \
-                                        and real_image[self.flicker.height_ - 1, self.flicker.width_ - 1, 2] == 255:
-                                    # Stop flicking
-                                    self.flicker.close_()
+                                # Retrieve frame
+                                input_ret, flicker_key_frame_2 = self.video_capture.read()
 
-                                    # Retrieve frame
-                                    input_ret, flicker_key_frame_2 = self.video_capture.read()
-                                    if input_ret and self.camera_matrix is not None \
-                                            and self.camera_distortions is not None:
-                                        flicker_key_frame_2 = cv2.undistort(flicker_key_frame_2,
-                                                                            self.camera_matrix,
-                                                                            self.camera_distortions,
-                                                                            None, self.camera_matrix)
+                                # Stop flicking
+                                self.flicker.close_()
 
-                                    # Reset counter
-                                    self.flick_counter = 0
+                                # Reset counter
+                                self.flick_counter = 0
 
                             # Frame blending
                             if flicker_key_frame_1 is not None and flicker_key_frame_2 is not None \
@@ -619,11 +634,6 @@ class OpenCVHandler:
 
                             # Retrieve frame
                             input_ret, self.input_frame = self.video_capture.read()
-                            if input_ret and self.camera_matrix is not None and self.camera_distortions is not None:
-                                self.input_frame = cv2.undistort(self.input_frame,
-                                                                 self.camera_matrix,
-                                                                 self.camera_distortions,
-                                                                 None, self.camera_matrix)
 
                     # No camera image
                     else:
@@ -648,8 +658,12 @@ class OpenCVHandler:
                 if self.input_frame is None or not input_ret:
                     self.input_frame = black_frame.copy()
 
+                self.time_debug("Camera captured", time_started)
+
                 # Create copy of input frame
                 output_frame = self.input_frame.copy()
+
+                self.time_debug("Frame copied", time_started)
 
                 # Disallow faking screen
                 if not self.fake_screen or error:
@@ -658,6 +672,8 @@ class OpenCVHandler:
                 # Convert input camera image to gray
                 input_gray = cv2.cvtColor(self.input_frame, cv2.COLOR_BGR2GRAY)
 
+                self.time_debug("Converted to gray", time_started)
+
                 # Invert frame if needed
                 if self.aruco_invert:
                     gray_for_aruco = cv2.bitwise_not(input_gray)
@@ -665,12 +681,27 @@ class OpenCVHandler:
                     gray_for_aruco = input_gray
 
                 # Find aruco markers
-                corners, ids, _ = aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
-                                                      parameters=self.parameters)
-                # corners, ids, _ = aruco.detectMarkers(image=gray_for_aruco, dictionary=self.aruco_dict,
-                #                                      parameters=self.parameters,
-                #                                     cameraMatrix=self.camera_matrix,
-                #                                      distCoeff=self.camera_distortions)
+                if self.fake_screen and self.fake_mode == FAKE_MODE_ARUCO:
+                    if self.camera_matrix is not None and self.camera_distortions is not None:
+                        corners, ids, _ = aruco.detectMarkers(image=gray_for_aruco, dictionary=self.aruco_dict,
+                                                              parameters=self.parameters,
+                                                              cameraMatrix=self.camera_matrix,
+                                                              distCoeff=self.camera_distortions)
+                    else:
+                        corners, ids, _ = aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
+                                                              parameters=self.parameters)
+
+                    # Get preview of first marker
+                    if np.all(ids is not None):
+                        rect = cv2.boundingRect(corners[0][0])
+                        self.aruco_image = cv2.resize(self.input_frame[rect[1]: rect[1] + rect[3],
+                                                      rect[0]: rect[0] + rect[2]],
+                                                      (self.aruco_size, self.aruco_size))
+
+                    self.time_debug("Markers detected", time_started)
+                else:
+                    corners = None
+                    ids = None
 
                 if self.fake_screen \
                         and self.fake_mode == FAKE_MODE_ARUCO \
@@ -697,37 +728,6 @@ class OpenCVHandler:
                                 marker_br = corners[ids_list.index(2)][0]
                                 marker_bl = corners[ids_list.index(3)][0]
 
-                                # Get preview of top-left marker
-                                rect = cv2.boundingRect(marker_tl)
-                                aruco_image_tl = cv2.resize(self.input_frame[rect[1]: rect[1] + rect[3],
-                                                            rect[0]: rect[0] + rect[2]],
-                                                            (self.aruco_size, self.aruco_size))
-                                rect = cv2.boundingRect(marker_tr)
-                                aruco_image_tr = cv2.resize(self.input_frame[rect[1]: rect[1] + rect[3],
-                                                            rect[0]: rect[0] + rect[2]],
-                                                            (self.aruco_size, self.aruco_size))
-                                rect = cv2.boundingRect(marker_br)
-                                aruco_image_br = cv2.resize(self.input_frame[rect[1]: rect[1] + rect[3],
-                                                            rect[0]: rect[0] + rect[2]],
-                                                            (self.aruco_size, self.aruco_size))
-                                rect = cv2.boundingRect(marker_bl)
-                                aruco_image_bl = cv2.resize(self.input_frame[rect[1]: rect[1] + rect[3],
-                                                            rect[0]: rect[0] + rect[2]],
-                                                            (self.aruco_size, self.aruco_size))
-
-                                aruco_image = np.zeros((self.aruco_size * 2, self.aruco_size * 2, 3),
-                                                       dtype=self.input_frame.dtype)
-                                aruco_image[: self.aruco_size, : self.aruco_size] = aruco_image_tl
-                                aruco_image[: self.aruco_size, self.aruco_size:] = aruco_image_tr
-                                aruco_image[self.aruco_size:, self.aruco_size:] = aruco_image_br
-                                aruco_image[self.aruco_size:, : self.aruco_size] = aruco_image_bl
-                                self.aruco_image = aruco_image
-
-                                # Calculate final screen coordinates
-                                # tl = self.get_marker_point(marker_tl, Marker.POSITION_TOP_LEFT)
-                                # tr = self.get_marker_point(marker_tr, Marker.POSITION_TOP_RIGHT)
-                                # br = self.get_marker_point(marker_br, Marker.POSITION_BOTTOM_RIGHT)
-                                # bl = self.get_marker_point(marker_bl, Marker.POSITION_BOTTOM_LEFT)
                                 tl = marker_tl[0]
                                 tr = marker_tr[1]
                                 br = marker_br[2]
@@ -839,18 +839,17 @@ class OpenCVHandler:
                         error = True
                         logging.error("ARUco was found but should not have been!")
 
-                # Resize output
-                output_frame = cv2.resize(output_frame, (self.output_width, self.output_height))
+                self.time_debug("Markers processed", time_started)
 
                 # Is frame totally black?
                 is_output_frame_black = cv2.countNonZero(cv2.cvtColor(output_frame, cv2.COLOR_BGR2GRAY)) == 0
 
+                # Resize output
+                output_frame = cv2.resize(output_frame, (self.output_width, self.output_height))
+                self.time_debug("Output resized", time_started)
+
                 # Add effects only on non-black output frame
                 if not is_output_frame_black:
-                    # Apply contrast and brightness
-                    output_frame = cv2.addWeighted(output_frame, self.output_contrast, output_frame, 0.,
-                                                   self.output_brightness)
-
                     # Add blur
                     # noinspection PyBroadException
                     try:
@@ -861,42 +860,118 @@ class OpenCVHandler:
                     except:
                         pass
 
+                    self.time_debug("Blur added", time_started)
+
+                    # Upload to gpu
+                    if cuda_enabled:
+                        gpu_output_frame.upload(output_frame)
+
+                    # Apply contrast and brightness
+                    if cuda_enabled:
+                        gpu_output_frame = cv2.cuda.addWeighted(gpu_output_frame, self.output_contrast,
+                                                                gpu_output_frame, 0., self.output_brightness)
+                    else:
+                        output_frame = cv2.addWeighted(output_frame, self.output_contrast, output_frame, 0.,
+                                                       self.output_brightness)
+
+                    self.time_debug("Br. / Cont. added", time_started)
+
                     # Add noise
                     # noinspection PyBroadException
                     try:
                         # Read noise from file
-                        noise_ret, noise_frame = noise.read()
-                        if not noise_ret:
-                            noise = cv2.VideoCapture("noise.avi")
-                            _, noise_frame = noise.read()
+                        test_noise_frame = None
+                        try:
+                            if noise_stream.more():
+                                test_noise_frame = noise_stream.read()
+                            else:
+                                noise_stream.stop()
+                                noise_stream = FileVideoStream(VIDEO_NOISE_FILE).start()
+                                test_noise_frame = noise_stream.read()
+                        except Exception as e:
+                            logging.exception(e)
+
+                        # Check noise
+                        if test_noise_frame is not None and test_noise_frame.shape[0] > 1\
+                                and test_noise_frame.shape[1] > 1 and test_noise_frame.shape[2] == 3:
+                            noise_frame = test_noise_frame
+
+                        # Upload to GPU
+                        if cuda_enabled:
+                            gpu_noise_frame.upload(noise_frame)
 
                         # Convert to grayscale
-                        noise_frame = cv2.cvtColor(noise_frame, cv2.COLOR_BGR2GRAY)
+                        if cuda_enabled:
+                            gpu_noise_frame = cv2.cuda.cvtColor(gpu_noise_frame, cv2.COLOR_BGR2GRAY)
+                        else:
+                            noise_frame = cv2.cvtColor(noise_frame, cv2.COLOR_BGR2GRAY)
 
                         # Crop or resize
                         if self.output_width <= noise_frame.shape[1] and self.output_height <= noise_frame.shape[0]:
-                            noise_frame = noise_frame[0:self.output_height, 0:self.output_width]
+                            if cuda_enabled:
+                                gpu_noise_frame = cv2.cuda_GpuMat(gpu_noise_frame,
+                                                                  (0, self.output_height), (0, self.output_width))
+                            else:
+                                noise_frame = noise_frame[0:self.output_height, 0:self.output_width]
                         else:
-                            noise_frame = cv2.resize(noise_frame,
-                                                     (self.output_width, self.output_height),
-                                                     interpolation=cv2.INTER_AREA)
+                            if cuda_enabled:
+                                gpu_noise_frame = cv2.cuda.resize(gpu_noise_frame,
+                                                                  (self.output_width, self.output_height),
+                                                                  interpolation=cv2.INTER_AREA)
+                            else:
+                                noise_frame = cv2.resize(noise_frame,
+                                                         (self.output_width, self.output_height),
+                                                         interpolation=cv2.INTER_AREA)
 
-                        # Convert output frame to HSV
-                        output_frame_hsv = cv2.cvtColor(output_frame, cv2.COLOR_BGR2HSV)
+                        # Add noise using GPU
+                        if cuda_enabled:
+                            # Convert output frame to HSV
+                            gpu_output_frame_hsv = cv2.cuda.cvtColor(gpu_output_frame, cv2.COLOR_BGR2HSV)
 
-                        # Add noise to darken areas
-                        output_frame_v_noisy = cv2.bitwise_not(
-                            cv2.bitwise_and(cv2.bitwise_not(output_frame_hsv[:, :, 2]), noise_frame))
+                            # Split HSV
+                            gpu_h = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
+                            gpu_s = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
+                            gpu_v = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
+                            cv2.cuda.split(gpu_output_frame_hsv, [gpu_h, gpu_s, gpu_v])
 
-                        # Combine with clear output
-                        output_frame_v_noisy = cv2.addWeighted(output_frame_hsv[:, :, 2], 1. - self.output_noise_amount,
-                                                               output_frame_v_noisy, self.output_noise_amount, 0.)
-                        output_frame_hsv[:, :, 2] = output_frame_v_noisy
+                            # Add noise to darken areas
+                            gpu_v_noisy = cv2.cuda.bitwise_not(cv2.cuda.bitwise_and(
+                                cv2.cuda.bitwise_not(gpu_v), gpu_noise_frame))
 
-                        # Convert back to BGR
-                        output_frame = cv2.cvtColor(output_frame_hsv, cv2.COLOR_HSV2BGR)
+                            # Combine with clear output
+                            gpu_v_noisy = cv2.cuda.addWeighted(gpu_v, 1. - self.output_noise_amount,
+                                                               gpu_v_noisy, self.output_noise_amount, 0.)
+
+                            # Merge HSV
+                            cv2.cuda.merge([gpu_h, gpu_s, gpu_v_noisy], gpu_output_frame_hsv)
+
+                            # Convert back to BGR
+                            gpu_output_frame = cv2.cuda.cvtColor(gpu_output_frame_hsv, cv2.COLOR_HSV2BGR)
+
+                            # Download from GPU
+                            output_frame = gpu_output_frame.download()
+
+                        # Add noise using CPU
+                        else:
+                            # Convert output frame to HSV
+                            output_frame_hsv = cv2.cvtColor(output_frame, cv2.COLOR_BGR2HSV)
+
+                            # Add noise to darken areas
+                            output_frame_v_noisy = cv2.bitwise_not(
+                                cv2.bitwise_and(cv2.bitwise_not(output_frame_hsv[:, :, 2]), noise_frame))
+
+                            # Combine with clear output
+                            output_frame_v_noisy = cv2.addWeighted(output_frame_hsv[:, :, 2],
+                                                                   1. - self.output_noise_amount,
+                                                                   output_frame_v_noisy, self.output_noise_amount, 0.)
+                            output_frame_hsv[:, :, 2] = output_frame_v_noisy
+
+                            # Convert back to BGR
+                            output_frame = cv2.cvtColor(output_frame_hsv, cv2.COLOR_HSV2BGR)
                     except:
                         pass
+
+                    self.time_debug("Noise added", time_started)
 
                 # Output enabled
                 if not error and not self.pause_output:
@@ -922,6 +997,8 @@ class OpenCVHandler:
                         self.controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
                         self.serial_controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
 
+                self.time_debug("States updated", time_started)
+
                 # Replace with black if none
                 if self.final_output_frame is None:
                     self.final_output_frame = cv2.resize(black_frame, (self.output_width, self.output_height))
@@ -930,12 +1007,28 @@ class OpenCVHandler:
                 self.push_output_image()
                 # cv2.waitKey(1)
 
-                # Minimum cycle time is 33ms
-                while time.time() - time_started < 0.033:
-                    time.sleep(0.001)
+                self.time_debug("Output pushed", time_started)
 
-                # Convert to ms
-                # cycle_time = ((time.time() - time_started) * 1000)
+                # Control cycle time
+                self.maximum_fps = 10
+                if self.maximum_fps > 0:
+                    while time.time() - time_started < (1. / self.maximum_fps):
+                        time.sleep(0.001)
+                else:
+                    while self.maximum_fps <= 0:
+                        time.sleep(0.01)
+
+                # Calculate FPS
+                current_fps = 1. / (time.time() - time_started)
+
+                # Filter FPS
+                if self.real_fps == 0:
+                    self.real_fps = current_fps
+                self.real_fps = self.real_fps * 0.90 + current_fps * 0.10
+
+                self.time_debug("Cycle finished", time_started)
+                if TIME_DEBUG:
+                    print()
 
             # OpenCV loop error
             except Exception as e:
@@ -1008,18 +1101,14 @@ class OpenCVHandler:
             preview_image = self.input_frame
 
         try:
-            # Convert to pixmap and resize
-            # pixmap = QPixmap.fromImage(
-            #     qimage2ndarray.array2qimage(
-            #         cv2.resize(
-            #            cv2.cvtColor(preview_image, cv2.COLOR_BGR2RGB),
-            #           (self.preview_label.size().width(), self.preview_label.size().height()),
-            #            interpolation=cv2.INTER_NEAREST)))
+            # Resize preview
+            preview_resized = resize_keep_ratio(preview_image, self.preview_label.size().width(),
+                                                self.preview_label.size().height())
 
-            pixmap = QPixmap.fromImage(qimage2ndarray.array2qimage(
-                resize_keep_ratio(cv2.cvtColor(preview_image, cv2.COLOR_BGR2RGB),
-                                  self.preview_label.size().width(),
-                                  self.preview_label.size().height())))
+            # Convert to pixmap
+            pixmap = QPixmap.fromImage(
+                QImage(preview_resized.data, preview_resized.shape[1], preview_resized.shape[0],
+                       3 * preview_resized.shape[1], QImage.Format_BGR888))
 
             # Push to preview
             self.update_preview.emit(pixmap)

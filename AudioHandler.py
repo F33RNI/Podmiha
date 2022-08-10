@@ -57,7 +57,7 @@ class AudioHandler:
         self.serial_controller = serial_controller
         self.update_audio_rms = update_audio_rms
 
-        self.py_audio = pyaudio.PyAudio()
+        self.py_audio = None
         self.input_stream = None
         self.output_stream = None
         self.input_output_sample_rate = 0
@@ -72,6 +72,8 @@ class AudioHandler:
         """
         devices = []
         try:
+            if self.py_audio is None:
+                self.py_audio = pyaudio.PyAudio()
             info = self.py_audio.get_host_api_info_by_index(0)
             device_count = info.get("deviceCount")
 
@@ -93,6 +95,8 @@ class AudioHandler:
         :return:
         """
         try:
+            if self.py_audio is None:
+                self.py_audio = pyaudio.PyAudio()
             info = self.py_audio.get_host_api_info_by_index(0)
             device_count = info.get("deviceCount")
             for i in range(0, device_count):
@@ -113,6 +117,8 @@ class AudioHandler:
         """
         if self.input_stream is None:
             try:
+                if self.py_audio is None:
+                    self.py_audio = pyaudio.PyAudio()
                 device_name = str(self.settings_handler.settings["audio_input_device_name"])
                 if len(device_name) > 0:
                     device_index = self.get_device_index_by_name(device_name)
@@ -170,6 +176,8 @@ class AudioHandler:
         """
         if self.output_stream is None:
             try:
+                if self.py_audio is None:
+                    self.py_audio = pyaudio.PyAudio()
                 device_name = str(self.settings_handler.settings["audio_output_device_name"])
                 if len(device_name) > 0:
                     device_index = self.get_device_index_by_name(device_name)

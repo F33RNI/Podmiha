@@ -93,7 +93,7 @@ class Window(QMainWindow):
 
         # Connect signals
         self.update_logs.connect(self.log.appendPlainText)
-        self.update_preview.connect(self.preview.setPixmap)
+        self.update_preview.connect(self.preview.setPixmap, QtCore.Qt.DirectConnection)
         self.update_audio_rms.connect(self.audio_output_level_progress.setValue)
         self.update_show_main_gui.connect(self.show_main_gui)
         self.update_show_fullscreen.connect(self.show_fullscreen)

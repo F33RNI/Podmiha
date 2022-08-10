@@ -80,8 +80,8 @@ if __name__ == "__main__":
     pyi_command.insert(0, "--paths")
 
     # OpenCV .dll path
-    #pyi_command.insert(0, "D:/opencv/opencv-4.5.5/build/install/x64/vc16/bin")
-    #pyi_command.insert(0, "--paths")
+    # pyi_command.insert(0, "D:/opencv/opencv-4.5.5/build/install/x64/vc16/bin")
+    # pyi_command.insert(0, "--paths")
 
     # Add icon
     pyi_command.insert(0, "--icon=./icons/icon.ico")
@@ -111,7 +111,7 @@ if __name__ == "__main__":
             # Disable console
             spec_data = spec_data.replace("console=True", "console=False")
 
-            #spec_data = spec_data.replace("hiddenimports=[]", "hiddenimports=[\"cv2\"]")
+            # spec_data = spec_data.replace("hiddenimports=[]", "hiddenimports=[\"cv2\"]")
 
             with open(MAIN_FILE + ".spec", "w") as spec_file_output:
                 # Write updated spec file

@@ -22,6 +22,10 @@
 import os
 import shutil
 import subprocess
+import sys
+
+import cv2
+import path
 
 # Name of the first file
 MAIN_FILE = "Podmiha"
@@ -41,6 +45,10 @@ INCLUDE_FILES = ["icons",
                  "camera_calibration.bat",
                  "charuco_board.jpg"]
 
+# *.py files to exclude from final build
+EXCLUDE_FROM_BUILD = ["camera_calibration.py",
+                      "audio_noise_generator.py"]
+
 if __name__ == "__main__":
     pyi_command = []
 
@@ -58,14 +66,25 @@ if __name__ == "__main__":
     for file in os.listdir("./"):
         if file.endswith(".py") and str(file) != MAIN_FILE \
                 and str(file) != os.path.basename(__file__) \
-                and str(file) != "camera_calibration.py":
+                and str(file) not in EXCLUDE_FROM_BUILD:
             pyi_command.append(str(file))
 
     # Add main file to pyi_command
     pyi_command.insert(0, MAIN_FILE + ".py")
 
-    # Add command
+    # OpenCV path
+    opencv_path = str(os.path.dirname(cv2.__file__)).replace("\\", "/").replace("//", "/")
+    pyi_command.insert(0, opencv_path)
+    pyi_command.insert(0, "--paths")
+
+    # OpenCV .dll path
+    #pyi_command.insert(0, "D:/opencv/opencv-4.5.5/build/install/x64/vc16/bin")
+    #pyi_command.insert(0, "--paths")
+
+    # Add icon
     pyi_command.insert(0, "--icon=./icons/icon.ico")
+
+    # Other command arguments
     pyi_command.insert(0, "--windowed")
     pyi_command.insert(0, "--onefile")
     pyi_command.insert(0, "pyi-makespec")
@@ -89,6 +108,8 @@ if __name__ == "__main__":
 
             # Disable console
             spec_data = spec_data.replace("console=True", "console=False")
+
+            #spec_data = spec_data.replace("hiddenimports=[]", "hiddenimports=[\"cv2\"]")
 
             with open(MAIN_FILE + ".spec", "w") as spec_file_output:
                 # Write updated spec file

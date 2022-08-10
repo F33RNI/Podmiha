@@ -43,6 +43,7 @@ This application will help you pass the online exam.
 3. To use microphone pause and fake noise download and install any virtual audio cable driver. For example VB-CABLE: `https://vb-audio.com/Cable/index.htm`
 4. To use virtual OS as screen replacement download any virtual machine (For example: `https://www.virtualbox.org/wiki/Downloads`) and install OS on it
 5. To use telegram messages create Bot `https://t.me/botfather`, invite it to your chat and get chat ID by inviting `https://t.me/RawDataBot` to your chat
+6. To use secret copy option install Tampermonkey `https://www.tampermonkey.net/` to your browser and add `Podmiha-click-copy.user.js` to it
 
 ### How to use
 
@@ -76,6 +77,14 @@ This application will help you pass the online exam.
 1. Connect controller via serial port
 2. Select serial port in `Control via serial port` section
 3. Select `Connected` Check box
+
+#### Secret copy
+
+1. Add content of `Podmiha-click-copy.user.js` script to the Tampermonkey
+2. Enable Podmiha-click-copy and reload current page
+3. If you want to **copy single word**, place mouse on top of it and **click** on it. Word will be copied to the clipboard
+4. If you want to **copy entire sentence**, place mouse on top of it and **double click** on it. Element text will be copied to the clipboard
+5. Podmiha-click-copy automatically removes some characters. To change it, edit `REMOVE_CHARS`, `CHARS_TO_REMOVE`  and `TRIM` constants on the top of the JS script
 
 ## Foot (serial) controller
 

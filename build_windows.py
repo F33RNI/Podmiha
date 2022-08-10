@@ -22,10 +22,8 @@
 import os
 import shutil
 import subprocess
-import sys
 
 import cv2
-import path
 
 # Name of the first file
 MAIN_FILE = "Podmiha"

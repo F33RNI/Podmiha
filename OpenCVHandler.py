@@ -54,7 +54,6 @@ FAKE_MODE_FLICKER = 1
 WINDOW_CAPTURE_QT = 0
 WINDOW_CAPTURE_OLD = 1
 
-
 TIME_DEBUG = False
 
 
@@ -206,7 +205,8 @@ def get_marker_white_color(image, marker_corners):
 
 class OpenCVHandler:
     def __init__(self, settings_handler, http_stream, virtual_camera, flicker, controller, serial_controller,
-                 update_preview: QtCore.pyqtSignal, preview_label: PyQt5.QtWidgets.QLabel):
+                 update_preview: QtCore.pyqtSignal, preview_label: PyQt5.QtWidgets.QLabel,
+                 update_fps: QtCore.pyqtSignal):
         """
         Initializes OpenCVHandler class
         :param settings_handler: SettingsHandler class
@@ -222,6 +222,7 @@ class OpenCVHandler:
         self.serial_controller = serial_controller
         self.update_preview = update_preview
         self.preview_label = preview_label
+        self.update_fps = update_fps
 
         # Internal variables
         self.opencv_thread_running = False
@@ -368,6 +369,8 @@ class OpenCVHandler:
         self.window_brightness = int(self.settings_handler.settings["window_brightness"])
         self.output_brightness = int(self.settings_handler.settings["output_brightness"])
         self.output_contrast = float(self.settings_handler.settings["output_contrast"])
+        self.maximum_fps = int(self.settings_handler.settings["max_fps"])
+        self.cuda_enabled = self.settings_handler.settings["cuda_enabled"]
 
         parameters = str(self.settings_handler.settings["aruco_detector_parameters"]).replace(" ", "").split(",")
         if len(parameters) is not 11:
@@ -892,7 +895,7 @@ class OpenCVHandler:
                             logging.exception(e)
 
                         # Check noise
-                        if test_noise_frame is not None and test_noise_frame.shape[0] > 1\
+                        if test_noise_frame is not None and test_noise_frame.shape[0] > 1 \
                                 and test_noise_frame.shape[1] > 1 and test_noise_frame.shape[2] == 3:
                             noise_frame = test_noise_frame
 
@@ -1010,7 +1013,6 @@ class OpenCVHandler:
                 self.time_debug("Output pushed", time_started)
 
                 # Control cycle time
-                self.maximum_fps = 10
                 if self.maximum_fps > 0:
                     while time.time() - time_started < (1. / self.maximum_fps):
                         time.sleep(0.001)
@@ -1025,6 +1027,9 @@ class OpenCVHandler:
                 if self.real_fps == 0:
                     self.real_fps = current_fps
                 self.real_fps = self.real_fps * 0.90 + current_fps * 0.10
+
+                # Update FPS
+                self.update_fps.emit("FPS: " + str(round(self.real_fps, 1)))
 
                 self.time_debug("Cycle finished", time_started)
                 if TIME_DEBUG:

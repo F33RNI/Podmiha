@@ -66,6 +66,7 @@ class Window(QMainWindow):
     update_audio_rms = QtCore.pyqtSignal(int)  # QtCore.Signal(int)
     update_show_main_gui = QtCore.pyqtSignal()  # QtCore.Signal()
     update_show_fullscreen = QtCore.pyqtSignal()  # QtCore.Signal()
+    update_fps = QtCore.pyqtSignal(str)  # QtCore.Signal(str)
 
     def __init__(self):
         super(Window, self).__init__()
@@ -97,6 +98,7 @@ class Window(QMainWindow):
         self.update_audio_rms.connect(self.audio_output_level_progress.setValue)
         self.update_show_main_gui.connect(self.show_main_gui)
         self.update_show_fullscreen.connect(self.show_fullscreen)
+        self.update_fps.connect(self.label_fps.setText, QtCore.Qt.DirectConnection)
 
         # Connect buttons
         self.camera_btn_mode_open = True
@@ -137,7 +139,8 @@ class Window(QMainWindow):
         # Initialize opencv class
         self.opencv_handler = OpenCVHandler.OpenCVHandler(self.settings_handler, self.http_streamer,
                                                           self.virtual_camera, self.flicker, self.controller,
-                                                          self.serial_controller, self.update_preview, self.preview)
+                                                          self.serial_controller, self.update_preview, self.preview,
+                                                          self.update_fps)
 
         # Initialize AudioHandler class
         self.audio_handler = AudioHandler.AudioHandler(self.settings_handler,
@@ -169,6 +172,8 @@ class Window(QMainWindow):
         self.camera_exposure_auto.clicked.connect(self.write_settings)
         self.camera_focus.valueChanged.connect(self.update_settings)
         self.camera_focus_auto.clicked.connect(self.write_settings)
+        self.max_fps.valueChanged.connect(self.update_settings)
+        self.cuda_enabled.clicked.connect(self.write_settings)
         self.fake_screen_checkbox.clicked.connect(self.write_settings)
         self.windows_titles.currentTextChanged.connect(self.update_settings)
         self.window_capture_old.clicked.connect(self.write_settings)
@@ -259,6 +264,8 @@ class Window(QMainWindow):
             self.camera_exposure_auto.setChecked(self.settings_handler.settings["input_camera_exposure_auto"])
             self.camera_focus.setValue(int(self.settings_handler.settings["input_camera_focus"]))
             self.camera_focus_auto.setChecked(self.settings_handler.settings["input_camera_focus_auto"])
+            self.max_fps.setValue(int(self.settings_handler.settings["max_fps"]))
+            self.cuda_enabled.setChecked(self.settings_handler.settings["cuda_enabled"])
 
             # Window capture
             self.fake_screen_checkbox.setChecked(self.settings_handler.settings["fake_screen"])
@@ -356,6 +363,8 @@ class Window(QMainWindow):
         self.settings_handler.settings["input_camera_exposure_auto"] = self.camera_exposure_auto.isChecked()
         self.settings_handler.settings["input_camera_focus"] = int(self.camera_focus.value())
         self.settings_handler.settings["input_camera_focus_auto"] = self.camera_focus_auto.isChecked()
+        self.settings_handler.settings["max_fps"] = int(self.max_fps.value())
+        self.settings_handler.settings["cuda_enabled"] = self.cuda_enabled.isChecked()
 
         # Window capture
         self.settings_handler.settings["fake_screen"] = self.fake_screen_checkbox.isChecked()

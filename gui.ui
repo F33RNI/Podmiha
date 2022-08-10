@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>713</width>
-    <height>395</height>
+    <height>403</height>
    </rect>
   </property>
   <property name="font">
@@ -23,7 +23,7 @@
    <enum>Qt::LeftToRight</enum>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout_40">
+   <layout class="QHBoxLayout" name="horizontalLayout_41">
     <item>
      <widget class="QScrollArea" name="scrollArea">
       <property name="sizePolicy">
@@ -51,9 +51,9 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-1169</y>
+         <y>0</y>
          <width>321</width>
-         <height>2077</height>
+         <height>2157</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -181,6 +181,41 @@
            </widget>
           </item>
          </layout>
+        </item>
+        <item>
+         <widget class="Line" name="line_8">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_35">
+          <item>
+           <widget class="QLabel" name="label_50">
+            <property name="text">
+             <string>Max FPS:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="max_fps">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>1000</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="cuda_enabled">
+          <property name="text">
+           <string>GPU Acceleration (CUDA)</string>
+          </property>
+         </widget>
         </item>
         <item>
          <widget class="Line" name="line">
@@ -591,6 +626,13 @@
            </widget>
           </item>
          </layout>
+        </item>
+        <item>
+         <widget class="Line" name="line_9">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
         </item>
         <item>
          <widget class="QCheckBox" name="aruco_invert_checkbox">
@@ -1570,7 +1612,7 @@
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
           <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
+          <verstretch>3</verstretch>
          </sizepolicy>
         </property>
         <property name="minimumSize">
@@ -1627,11 +1669,11 @@
        </layout>
       </item>
       <item>
-       <layout class="QVBoxLayout" name="verticalLayout_2">
+       <layout class="QHBoxLayout" name="horizontalLayout_40">
         <item>
          <widget class="QLabel" name="label_7">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -1639,40 +1681,59 @@
           <property name="text">
            <string>Logs:</string>
           </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          </property>
          </widget>
         </item>
         <item>
-         <widget class="QPlainTextEdit" name="log">
+         <widget class="QLabel" name="label_fps">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Ignored">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
-          <property name="minimumSize">
-           <size>
-            <width>50</width>
-            <height>50</height>
-           </size>
+          <property name="text">
+           <string>FPS: 0</string>
           </property>
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="readOnly">
-           <bool>true</bool>
-          </property>
-          <property name="tabStopWidth">
-           <number>80</number>
-          </property>
-          <property name="maximumBlockCount">
-           <number>20</number>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
           </property>
          </widget>
         </item>
        </layout>
+      </item>
+      <item>
+       <widget class="QPlainTextEdit" name="log">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>50</width>
+          <height>10</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="tabStopWidth">
+         <number>80</number>
+        </property>
+        <property name="maximumBlockCount">
+         <number>20</number>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
@@ -1693,8 +1754,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup_3"/>
-  <buttongroup name="buttonGroup_2"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="buttonGroup_2"/>
+  <buttongroup name="buttonGroup_3"/>
  </buttongroups>
 </ui>

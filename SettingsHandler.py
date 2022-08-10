@@ -33,6 +33,8 @@ SETTINGS_DEFAULT = {
     "input_camera_exposure_auto": False,
     "input_camera_focus": 5,
     "input_camera_focus_auto": False,
+    "max_fps": 10,
+    "cuda_enabled": False,
     "fake_screen": False,
     "window_title": "",
     "window_capture_method": 0,

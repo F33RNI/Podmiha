@@ -53,7 +53,7 @@ import winguiauto
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
 
 
-APP_VERSION = "1.5.2"
+APP_VERSION = "1.6.0"
 
 SETTINGS_FILE = "settings.json"
 

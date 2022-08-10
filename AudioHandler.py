@@ -32,6 +32,9 @@ import SerialController
 import SettingsHandler
 import Controller
 
+NOISE_FILE = "audio_noise.raw"
+NOISE_DTYPE = np.float32
+
 AUDIO_CHANNELS = 1
 AUDIO_CHUNK_SIZE = 2048 * AUDIO_CHANNELS
 AUDIO_FORMAT = pyaudio.paInt16
@@ -246,11 +249,37 @@ class AudioHandler:
         # Timer for updating volume
         update_audio_timer = time.time()
 
+        # Audio noise
+        noise = None
+
+        # Read noise from file
+        try:
+            logging.info("Reading noise from file...")
+            noise_file = open(NOISE_FILE, "rb")
+            noise_data_raw = noise_file.read()
+            while noise_data_raw:
+                noise_data_float = np.frombuffer(noise_data_raw, dtype=NOISE_DTYPE)
+                if noise is None:
+                    noise = noise_data_float
+                else:
+                    np.append(noise, noise_data_float)
+                noise_data_raw = noise_file.read()
+            noise_file.close()
+            sample_rate = int(self.settings_handler.settings["audio_sample_rate"])
+            logging.info(str(len(noise) // sample_rate) + " seconds of noise at " + str(sample_rate) + "s/s read")
+        except Exception as e:
+            noise = None
+            logging.exception(e)
+            logging.error("Error reading noise from file!")
+
+        # Noise position counter
+        noise_position_counter = 0
+
         while self.audio_thread_running:
             try:
                 # Read input device chunk
                 if self.is_input_device_opened() and self.input_output_sample_rate > 0:
-                    # Retrieve data
+                    # Retrieve microphone data
                     input_data_raw = self.input_stream.read(AUDIO_CHUNK_SIZE)
 
                     # Convert to numpy array
@@ -275,20 +304,38 @@ class AudioHandler:
                     # Initialize output
                     output_data = None
 
-                    # Add noise
+                    # Get amount of noise from settings
                     noise_amount = self.settings_handler.settings["audio_noise_amount"]
-                    if noise_amount > 0:
-                        noise_data_np = np.random.normal(0, noise_amount, AUDIO_CHUNK_SIZE).astype(AUDIO_NP_FORMAT)
+
+                    if noise_amount > 0 and noise is not None:
+                        # Increment noise counter
+                        noise_position_counter += AUDIO_CHUNK_SIZE
+
+                        # Get chunk of noise
+                        if noise_position_counter + AUDIO_CHUNK_SIZE < len(noise):
+                            noise_chunk = noise[noise_position_counter: noise_position_counter + AUDIO_CHUNK_SIZE]
+                        else:
+                            noise_position_counter = 0
+                            noise_chunk = noise[:AUDIO_CHUNK_SIZE]
+
+                        # Multiply by noise level
+                        noise_data_np = np.multiply(noise_chunk, noise_amount).astype(AUDIO_NP_FORMAT)
 
                         # Noise and paused
                         if self.pause_output:
                             # Send noise to output because input paused
-                            output_data = noise_data_np.tobytes()
+                            if noise_data_np is not None:
+                                output_data = noise_data_np.tobytes()
 
                         # Noise and not paused
                         else:
                             # Send combined data
-                            output_data_np = np.add(input_data_np, noise_data_np)
+                            if noise_data_np is not None and len(noise_data_np) == AUDIO_CHUNK_SIZE:
+                                output_data_np = np.add(input_data_np, noise_data_np)
+
+                            # Send only input data because noise is not available
+                            else:
+                                output_data_np = input_data_np
                             output_data = output_data_np.tobytes()
 
                     # No noise and not paused

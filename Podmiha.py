@@ -53,7 +53,7 @@ import winguiauto
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
 
 
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.6.1"
 
 SETTINGS_FILE = "settings.json"
 
@@ -95,7 +95,7 @@ class Window(QMainWindow):
         # Connect signals
         self.update_logs.connect(self.log.appendPlainText)
         self.update_preview.connect(self.preview.setPixmap, QtCore.Qt.DirectConnection)
-        self.update_audio_rms.connect(self.audio_output_level_progress.setValue)
+        self.update_audio_rms.connect(self.audio_output_level_progress.setValue, QtCore.Qt.DirectConnection)
         self.update_show_main_gui.connect(self.show_main_gui)
         self.update_show_fullscreen.connect(self.show_fullscreen)
         self.update_fps.connect(self.label_fps.setText, QtCore.Qt.DirectConnection)

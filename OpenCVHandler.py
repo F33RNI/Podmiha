@@ -495,7 +495,7 @@ class OpenCVHandler:
         flicker_key_frame_1 = None
         flicker_key_frame_2 = None
         self.aruco_image = black_frame.copy()
-        noise_frame = black_frame.copy()
+        noise_frame = np.zeros((1280, 720), dtype=np.uint8)
         cuda_enabled = False
         noise_stream = FileVideoStream(VIDEO_NOISE_FILE).start()
 
@@ -897,17 +897,11 @@ class OpenCVHandler:
                         # Check noise
                         if test_noise_frame is not None and test_noise_frame.shape[0] > 1 \
                                 and test_noise_frame.shape[1] > 1 and test_noise_frame.shape[2] == 3:
-                            noise_frame = test_noise_frame
+                            noise_frame = test_noise_frame[:, :, 0]
 
                         # Upload to GPU
                         if cuda_enabled:
                             gpu_noise_frame.upload(noise_frame)
-
-                        # Convert to grayscale
-                        if cuda_enabled:
-                            gpu_noise_frame = cv2.cuda.cvtColor(gpu_noise_frame, cv2.COLOR_BGR2GRAY)
-                        else:
-                            noise_frame = cv2.cvtColor(noise_frame, cv2.COLOR_BGR2GRAY)
 
                         # Crop or resize
                         if self.output_width <= noise_frame.shape[1] and self.output_height <= noise_frame.shape[0]:

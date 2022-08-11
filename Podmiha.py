@@ -53,7 +53,7 @@ import winguiauto
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
 
 
-APP_VERSION = "1.6.3"
+APP_VERSION = "1.6.4"
 
 SETTINGS_FILE = "settings.json"
 
@@ -168,6 +168,10 @@ class Window(QMainWindow):
         # Connect settings updater
         self.camera_id.valueChanged.connect(self.update_settings)
         self.use_dshow.clicked.connect(self.write_settings)
+
+        self.input_width.valueChanged.connect(self.resize_input_width)
+        self.input_height.valueChanged.connect(self.resize_input_height)
+
         self.camera_exposure.valueChanged.connect(self.update_settings)
         self.camera_exposure_auto.clicked.connect(self.write_settings)
         self.camera_focus.valueChanged.connect(self.update_settings)
@@ -260,6 +264,8 @@ class Window(QMainWindow):
             # Camera
             self.camera_id.setValue(int(self.settings_handler.settings["input_camera"]))
             self.use_dshow.setChecked(self.settings_handler.settings["use_dshow"])
+            self.input_width.setValue(int(self.settings_handler.settings["input_size"][0]))
+            self.input_height.setValue(int(self.settings_handler.settings["input_size"][1]))
             self.camera_exposure.setValue(int(self.settings_handler.settings["input_camera_exposure"]))
             self.camera_exposure_auto.setChecked(self.settings_handler.settings["input_camera_exposure_auto"])
             self.camera_focus.setValue(int(self.settings_handler.settings["input_camera_focus"]))
@@ -359,6 +365,8 @@ class Window(QMainWindow):
         # Camera
         self.settings_handler.settings["input_camera"] = int(self.camera_id.value())
         self.settings_handler.settings["use_dshow"] = self.use_dshow.isChecked()
+        self.settings_handler.settings["input_size"][0] = int(self.input_width.value())
+        self.settings_handler.settings["input_size"][1] = int(self.input_height.value())
         self.settings_handler.settings["input_camera_exposure"] = int(self.camera_exposure.value())
         self.settings_handler.settings["input_camera_exposure_auto"] = self.camera_exposure_auto.isChecked()
         self.settings_handler.settings["input_camera_focus"] = int(self.camera_focus.value())
@@ -712,6 +720,9 @@ class Window(QMainWindow):
             self.camera_btn_mode_open = False
             self.camera_id.setEnabled(False)
             self.use_dshow.setEnabled(False)
+            self.input_width.setEnabled(False)
+            self.input_height.setEnabled(False)
+            self.lock_input_resize.setEnabled(False)
             self.btn_open_camera.setText("Close camera")
             self.opencv_handler.open_camera()
         else:
@@ -719,7 +730,24 @@ class Window(QMainWindow):
             self.opencv_handler.close_camera()
             self.camera_id.setEnabled(True)
             self.use_dshow.setEnabled(True)
+            self.input_width.setEnabled(True)
+            self.input_height.setEnabled(True)
+            self.lock_input_resize.setEnabled(True)
             self.btn_open_camera.setText("Open camera")
+
+    def resize_input_width(self):
+        if self.lock_input_resize.isChecked():
+            self.input_height.disconnect()
+            self.input_height.setValue(int(int(self.input_width.value()) / (16 / 9)))
+            self.input_height.valueChanged.connect(self.resize_input_height)
+        self.update_settings()
+
+    def resize_input_height(self):
+        if self.lock_input_resize.isChecked():
+            self.input_width.disconnect()
+            self.input_width.setValue(int(int(self.input_height.value()) * (16 / 9)))
+            self.input_width.valueChanged.connect(self.resize_input_width)
+        self.update_settings()
 
     def resize_output_width(self):
         if self.lock_resize.isChecked():

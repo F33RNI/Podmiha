@@ -29,6 +29,7 @@ import OpenCVHandler
 SETTINGS_DEFAULT = {
     "input_camera": 0,
     "use_dshow": True,
+    "input_size": [1280, 720],
     "input_camera_exposure": -6,
     "input_camera_exposure_auto": False,
     "input_camera_focus": 5,

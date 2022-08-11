@@ -441,8 +441,8 @@ class OpenCVHandler:
             # self.video_capture.set(cv2.CAP_PROP_SETTINGS, 1)
 
             # Select maximum resolution
-            self.video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-            self.video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+            self.video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, int(self.settings_handler.settings["input_size"][0]))
+            self.video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, int(self.settings_handler.settings["input_size"][1]))
 
             # Focus
             self.video_capture.set(cv2.CAP_PROP_AUTOFOCUS, 1 if self.input_camera_focus_auto else 0)

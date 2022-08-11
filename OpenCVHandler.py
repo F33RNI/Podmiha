@@ -24,22 +24,18 @@ import os
 import threading
 import time
 
-import PyQt5
 import cv2
 import numpy as np
 import qimage2ndarray
 import win32gui
 from PIL import ImageGrab
-from PyQt5 import QtCore
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QApplication
 from imutils.video import FileVideoStream
 
-from qt_thread_updater import get_updater
-
-
 import Controller
 import winguiauto
+from qt_thread_updater import get_updater
 
 VIDEO_NOISE_FILE = "noise.avi"
 

@@ -53,7 +53,7 @@ import winguiauto
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
 
 
-APP_VERSION = "1.6.2"
+APP_VERSION = "1.6.3"
 
 SETTINGS_FILE = "settings.json"
 
@@ -779,6 +779,9 @@ class Window(QMainWindow):
 
 
 if __name__ == "__main__":
+    # Add cv2 directory
+    #sys.path.insert(0, "./cv2")
+
     # Replace icon in taskbar
     podmiha_app_ip = "f3rni.podmiha.podmiha." + APP_VERSION
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(podmiha_app_ip)

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Podmiha-click-copy
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Podmiha tampermonkey script
 // @author       Fern Lane
 // @match        *://*/*
@@ -10,7 +10,7 @@
 
 // Set to true to automatically remove the following characters from text when copying
 const REMOVE_CHARS = true;
-const CHARS_TO_REMOVE = ['?', '.'];
+const CHARS_TO_REMOVE = ['?', '.', ':', '...', '-'];
 
 // Set to true automatically remove spaces before and after selected text
 const TRIM = true;

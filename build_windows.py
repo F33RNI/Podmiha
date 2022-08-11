@@ -24,16 +24,22 @@ import shutil
 import subprocess
 import sys
 
-import cv2
-
 # Name of the first file
+import time
+
+import Podmiha
+
 MAIN_FILE = "Podmiha"
+
+# Path to OpenCV to include into --paths
+OPENCV_PATH = os.path.expanduser('~') + "/AppData/Local/Programs/Python/Python37/Lib/site-packages/cv2/python-3.7"
+#OPENCV_PATH = "./cv2/python-3.7"
 
 # Text to add to the spec file
 SPEC_FILE_HEADER = "import PyInstaller.config\n" \
                    "PyInstaller.config.CONF[\"workpath\"] = \"./build\"\n"
 
-# Files and folders to include in final build (dist folder)
+# Files and folders to include in final build directory (dist/Podmiha folder)
 INCLUDE_FILES = ["icons",
                  "Podmiha-serial-controller/.pio/build/nanoatmega328",
                  "gui.ui",
@@ -44,6 +50,9 @@ INCLUDE_FILES = ["icons",
                  "camera_calibration.bat",
                  "charuco_board.jpg",
                  "audio_noise.raw"]
+
+# Files and folders to exclude from final build directory (dist/Podmiha folder)
+EXCLUDE_FILES = ["cv2"]
 
 # *.py files to exclude from final build
 EXCLUDE_FROM_BUILD = ["camera_calibration.py",
@@ -73,22 +82,20 @@ if __name__ == "__main__":
     pyi_command.insert(0, MAIN_FILE + ".py")
 
     # OpenCV path
-    opencv_path = str(os.path.dirname(cv2.__file__))
-    opencv_path += "/python-" + str(sys.version_info[0]) + "." + str(sys.version_info[1])
-    opencv_path = opencv_path.replace("\\", "/").replace("//", "/")
-    pyi_command.insert(0, opencv_path)
+    OPENCV_PATH = OPENCV_PATH.replace("\\", "/").replace("//", "/")
+    pyi_command.insert(0, OPENCV_PATH)
     pyi_command.insert(0, "--paths")
 
     # OpenCV .dll path
-    # pyi_command.insert(0, "D:/opencv/opencv-4.5.5/build/install/x64/vc16/bin")
-    # pyi_command.insert(0, "--paths")
+    pyi_command.insert(0, "D:/opencv/opencv-4.5.5/build/install/x64/vc16/bin")
+    pyi_command.insert(0, "--paths")
 
     # Add icon
     pyi_command.insert(0, "--icon=./icons/icon.ico")
 
     # Other command arguments
     pyi_command.insert(0, "--windowed")
-    pyi_command.insert(0, "--onefile")
+    # pyi_command.insert(0, "--onefile")
     pyi_command.insert(0, "pyi-makespec")
 
     # Delete previous spec
@@ -111,6 +118,7 @@ if __name__ == "__main__":
             # Disable console
             spec_data = spec_data.replace("console=True", "console=False")
 
+            # spec_data = spec_data.replace("excludes=[]", "excludes=[\"cv2\"]")
             # spec_data = spec_data.replace("hiddenimports=[]", "hiddenimports=[\"cv2\"]")
 
             with open(MAIN_FILE + ".spec", "w") as spec_file_output:
@@ -125,26 +133,52 @@ if __name__ == "__main__":
                 subprocess.run(pyi_command, text=True)
 
                 # If dist folder created
-                if "dist" in os.listdir("./"):
+                if "dist" in os.listdir(".") and MAIN_FILE in os.listdir("./dist"):
 
                     # Remove build folder is exists
                     if "build" in os.listdir("./"):
                         shutil.rmtree("build", ignore_errors=True)
                         print("build folder deleted")
 
+                    # Wait some time
+                    print("Waiting 1 second...")
+                    time.sleep(1)
+
                     # Copy include files to it
                     for file in INCLUDE_FILES:
                         try:
                             if os.path.isfile(file):
-                                shutil.copy(file, "./dist/" + file)
+                                shutil.copy(file, "dist/" + MAIN_FILE + "/" + file)
                             elif os.path.isdir(file):
-                                shutil.copytree(file, "./dist/" + file)
-                            print("Added", file, "to dist folder")
+                                shutil.copytree(file, "dist/" + MAIN_FILE + "/" + file)
+                            print("Added", file, "to dist/", MAIN_FILE, "folder")
                         except Exception as e:
                             print("Error copying file!", e)
 
+                    # Wait some time
+                    print("Waiting 1 second...")
+                    time.sleep(1)
+
+                    # Exclude files to it
+                    for file in EXCLUDE_FILES:
+                        try:
+                            if os.path.isfile("dist/" + MAIN_FILE + "/" + file):
+                                os.remove("dist/" + MAIN_FILE + "/" + file)
+                            elif os.path.isdir("dist/" + MAIN_FILE + "/" + file):
+                                shutil.rmtree("dist/" + MAIN_FILE + "/" + file)
+                            print("Removed", file, "from dist/", MAIN_FILE, "folder")
+                        except Exception as e:
+                            print("Error excluding file!", e)
+
+                    # Wait some time
+                    print("Waiting 1 second...")
+                    time.sleep(1)
+
+                    # Rename final folder
+                    os.rename("dist/" + MAIN_FILE, "dist/" + MAIN_FILE + "-" + Podmiha.APP_VERSION + "-windows")
+
                 else:
-                    print("Error. No dist folder!")
+                    print("Error. No dist/" + MAIN_FILE + " folder!")
 
     # Spec file not generated
     else:

@@ -20,14 +20,12 @@
 """
 import logging
 import sys
-import time
 
 import PyQt5
-import cv2
-import qimage2ndarray
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QApplication
+import cv2
 
 import SettingsHandler
 

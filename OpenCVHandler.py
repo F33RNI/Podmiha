@@ -33,7 +33,6 @@ from PIL import ImageGrab
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QApplication
-from cv2 import aruco
 from imutils.video import FileVideoStream
 
 import Controller
@@ -686,12 +685,12 @@ class OpenCVHandler:
                 # Find aruco markers
                 if self.fake_screen and self.fake_mode == FAKE_MODE_ARUCO:
                     if self.camera_matrix is not None and self.camera_distortions is not None:
-                        corners, ids, _ = aruco.detectMarkers(image=gray_for_aruco, dictionary=self.aruco_dict,
+                        corners, ids, _ = cv2.aruco.detectMarkers(image=gray_for_aruco, dictionary=self.aruco_dict,
                                                               parameters=self.parameters,
                                                               cameraMatrix=self.camera_matrix,
                                                               distCoeff=self.camera_distortions)
                     else:
-                        corners, ids, _ = aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
+                        corners, ids, _ = cv2.aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
                                                               parameters=self.parameters)
 
                     # Get preview of first marker

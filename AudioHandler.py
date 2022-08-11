@@ -26,11 +26,11 @@ import time
 
 import numpy as np
 import pyaudio
-from PyQt5 import QtCore
 
+import Controller
 import SerialController
 import SettingsHandler
-import Controller
+from qt_thread_updater import get_updater
 
 NOISE_FILE = "audio_noise.raw"
 NOISE_DTYPE = np.float32
@@ -47,18 +47,18 @@ DEVICE_TYPE_OUTPUT = 1
 
 class AudioHandler:
     def __init__(self, settings_handler: SettingsHandler, controller: Controller, serial_controller: SerialController,
-                 update_audio_rms: QtCore.pyqtSignal):
+                 audio_output_level_progress):
         """
         Initializes AudioHandler class
         :param settings_handler: SettingsHandler class
         :param controller: Controller class
         :param serial_controller: SerialController class
-        :param update_audio_rms: qt signal for updating progress bar
+        :param audio_output_level_progress: progress bar audio level
         """
         self.settings_handler = settings_handler
         self.controller = controller
         self.serial_controller = serial_controller
-        self.update_audio_rms = update_audio_rms
+        self.audio_output_level_progress = audio_output_level_progress
 
         self.py_audio = None
         self.input_stream = None
@@ -365,10 +365,10 @@ class AudioHandler:
                                     volume_rms = 100
 
                                 # Send volume
-                                self.update_audio_rms.emit(int(volume_rms))
+                                get_updater().call_latest(self.audio_output_level_progress.setValue, int(volume_rms))
                             else:
                                 # Send 0 volume
-                                self.update_audio_rms.emit(0)
+                                get_updater().call_latest(self.audio_output_level_progress.setValue, 0)
                     except:
                         pass
                 else:

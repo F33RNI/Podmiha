@@ -16,3 +16,4 @@ Flask~=1.1.2
 pyvirtualcam~=0.9.1
 imutils~=0.5.3
 PyAutoGUI~=0.9.50
+qt_thread_updater~=1.1.6

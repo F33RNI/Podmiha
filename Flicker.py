@@ -28,10 +28,10 @@ from PyQt5.QtWidgets import QApplication
 import cv2
 
 import SettingsHandler
+from qt_thread_updater import get_updater
 
 
 class Flicker(PyQt5.QtWidgets.QLabel):
-    update_frame = QtCore.pyqtSignal(QPixmap)  # QtCore.Signal(QPixmap)
     update_geometry = QtCore.pyqtSignal(PyQt5.QtCore.QRect)  # QtCore.Signal(PyQt5.QtCore.QRect)
     signal_show = QtCore.pyqtSignal()  # QtCore.Signal()
     signal_raise = QtCore.pyqtSignal()  # QtCore.Signal()
@@ -60,7 +60,6 @@ class Flicker(PyQt5.QtWidgets.QLabel):
                             | QtCore.Qt.X11BypassWindowManagerHint)
 
         self.update_geometry.connect(self.setGeometry)
-        self.update_frame.connect(self.setPixmap, QtCore.Qt.DirectConnection)
         self.signal_show.connect(self.show)
         self.signal_raise.connect(self.raise_)
 
@@ -111,7 +110,7 @@ class Flicker(PyQt5.QtWidgets.QLabel):
                     QImage(frame_resized.data, self.width_, self.height_, 3 * self.width_, QImage.Format_BGR888))
 
                 # Update frame
-                self.update_frame.emit(pixmap)
+                get_updater().call_latest(self.setPixmap, pixmap)
             except Exception as e:
                 logging.exception(e)
                 logging.error("Error setting new frame to the Flicker class")

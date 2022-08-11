@@ -26,6 +26,7 @@ from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QFrame, QDesktopWidget
 
 import TelegramHandler
+from qt_thread_updater import get_updater
 
 CAMERA_STATE_ERROR_ACTIVE = 0
 CAMERA_STATE_ERROR_PAUSED = 1
@@ -52,9 +53,6 @@ class VLine(QFrame):
 
 
 class Controller(QWidget):
-    update_camera_icon = QtCore.pyqtSignal(QIcon)  # QtCore.Signal(QIcon)
-    update_microphone_icon = QtCore.pyqtSignal(QIcon)  # QtCore.Signal(QIcon)
-
     def __init__(self, telegram_handler: TelegramHandler, update_show_main_gui: QtCore.pyqtSignal,
                  update_show_fullscreen: QtCore.pyqtSignal):
         """
@@ -141,10 +139,6 @@ class Controller(QWidget):
         self.btn_send_minus.setIcon(self.icon_send_minus)
         self.btn_send_screenshot.setIcon(self.icon_send_screenshot)
         self.btn_show_gui.setIcon(self.icon_show_gui)
-
-        # Connect signals
-        self.update_camera_icon.connect(self.btn_camera_control.setIcon)
-        self.update_microphone_icon.connect(self.btn_microphone_control.setIcon)
 
         # Connect buttons
         self.btn_camera_control.clicked.connect(self.camera_control)
@@ -270,13 +264,13 @@ class Controller(QWidget):
         """
         self.camera_current_state = new_state
         if self.camera_current_state == CAMERA_STATE_ACTIVE:
-            self.update_camera_icon.emit(self.icon_camera_active)
+            get_updater().call_latest(self.btn_camera_control.setIcon, self.icon_camera_active)
         elif self.camera_current_state == CAMERA_STATE_PAUSED:
-            self.update_camera_icon.emit(self.icon_camera_paused)
+            get_updater().call_latest(self.btn_camera_control.setIcon, self.icon_camera_paused)
         elif self.camera_current_state == CAMERA_STATE_ERROR_ACTIVE:
-            self.update_camera_icon.emit(self.icon_camera_error_active)
+            get_updater().call_latest(self.btn_camera_control.setIcon, self.icon_camera_error_active)
         else:
-            self.update_camera_icon.emit(self.icon_camera_error_paused)
+            get_updater().call_latest(self.btn_camera_control.setIcon, self.icon_camera_error_paused)
 
     def update_state_microphone(self, new_state: int):
         """
@@ -286,13 +280,13 @@ class Controller(QWidget):
         """
         self.microphone_current_state = new_state
         if self.microphone_current_state == MICROPHONE_STATE_ACTIVE:
-            self.update_microphone_icon.emit(self.icon_microphone_active)
+            get_updater().call_latest(self.btn_microphone_control.setIcon, self.icon_microphone_active)
         elif self.microphone_current_state == MICROPHONE_STATE_PAUSED:
-            self.update_microphone_icon.emit(self.icon_microphone_paused)
+            get_updater().call_latest(self.btn_microphone_control.setIcon, self.icon_microphone_paused)
         elif self.microphone_current_state == MICROPHONE_STATE_ERROR_ACTIVE:
-            self.update_microphone_icon.emit(self.icon_microphone_error_active)
+            get_updater().call_latest(self.btn_microphone_control.setIcon, self.icon_microphone_error_active)
         else:
-            self.update_microphone_icon.emit(self.icon_microphone_error_paused)
+            get_updater().call_latest(self.btn_microphone_control.setIcon, self.icon_microphone_error_paused)
 
     def paintEvent(self, event):
         """

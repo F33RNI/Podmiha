@@ -53,7 +53,7 @@ import winguiauto
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
 
 
-APP_VERSION = "1.6.4"
+APP_VERSION = "1.6.5"
 
 SETTINGS_FILE = "settings.json"
 
@@ -62,11 +62,8 @@ UPDATE_SETTINGS_AFTER_MS = 500
 
 class Window(QMainWindow):
     update_logs = QtCore.pyqtSignal(str)  # QtCore.Signal(str)
-    update_preview = QtCore.pyqtSignal(QPixmap)  # QtCore.Signal(QPixmap)
-    update_audio_rms = QtCore.pyqtSignal(int)  # QtCore.Signal(int)
     update_show_main_gui = QtCore.pyqtSignal()  # QtCore.Signal()
     update_show_fullscreen = QtCore.pyqtSignal()  # QtCore.Signal()
-    update_fps = QtCore.pyqtSignal(str)  # QtCore.Signal(str)
 
     def __init__(self):
         super(Window, self).__init__()
@@ -94,11 +91,8 @@ class Window(QMainWindow):
 
         # Connect signals
         self.update_logs.connect(self.log.appendPlainText)
-        self.update_preview.connect(self.preview.setPixmap, QtCore.Qt.DirectConnection)
-        self.update_audio_rms.connect(self.audio_output_level_progress.setValue, QtCore.Qt.DirectConnection)
         self.update_show_main_gui.connect(self.show_main_gui)
         self.update_show_fullscreen.connect(self.show_fullscreen)
-        self.update_fps.connect(self.label_fps.setText, QtCore.Qt.DirectConnection)
 
         # Connect buttons
         self.camera_btn_mode_open = True
@@ -139,12 +133,12 @@ class Window(QMainWindow):
         # Initialize opencv class
         self.opencv_handler = OpenCVHandler.OpenCVHandler(self.settings_handler, self.http_streamer,
                                                           self.virtual_camera, self.flicker, self.controller,
-                                                          self.serial_controller, self.update_preview, self.preview,
-                                                          self.update_fps)
+                                                          self.serial_controller, self.preview, self.label_fps)
 
         # Initialize AudioHandler class
         self.audio_handler = AudioHandler.AudioHandler(self.settings_handler,
-                                                       self.controller, self.serial_controller, self.update_audio_rms)
+                                                       self.controller, self.serial_controller,
+                                                       self.audio_output_level_progress)
 
         # Parse settings
         self.settings_handler.read_from_file()
@@ -822,7 +816,7 @@ if __name__ == "__main__":
 
     # Start app
     try:
-        app = QApplication(sys.argv)
+        app = QApplication.instance() or QApplication(sys.argv)
         app.setStyle("fusion")
         win = Window()
         app.exec_()

@@ -35,6 +35,9 @@ from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QApplication
 from imutils.video import FileVideoStream
 
+from qt_thread_updater import get_updater
+
+
 import Controller
 import winguiauto
 
@@ -204,14 +207,13 @@ def get_marker_white_color(image, marker_corners):
 
 class OpenCVHandler:
     def __init__(self, settings_handler, http_stream, virtual_camera, flicker, controller, serial_controller,
-                 update_preview: QtCore.pyqtSignal, preview_label: PyQt5.QtWidgets.QLabel,
-                 update_fps: QtCore.pyqtSignal):
+                 preview_label, label_fps):
         """
         Initializes OpenCVHandler class
         :param settings_handler: SettingsHandler class
         :param http_stream: HTTPStream class with set_frame function
-        :param update_preview: qtSignal from main form
-        :param preview_label: preview element for size measurement
+        :param preview_label: preview label element
+        :param label_fps: fps label
         """
         self.settings_handler = settings_handler
         self.http_stream = http_stream
@@ -219,9 +221,8 @@ class OpenCVHandler:
         self.flicker = flicker
         self.controller = controller
         self.serial_controller = serial_controller
-        self.update_preview = update_preview
         self.preview_label = preview_label
-        self.update_fps = update_fps
+        self.label_fps = label_fps
 
         # Internal variables
         self.opencv_thread_running = False
@@ -516,6 +517,9 @@ class OpenCVHandler:
                     cv2.cuda.setDevice(0)
                     gpu_output_frame = cv2.cuda_GpuMat()
                     gpu_noise_frame = cv2.cuda_GpuMat()
+                    gpu_h = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
+                    gpu_s = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
+                    gpu_v = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
                 cuda_enabled = cuda_enabled_new
 
                 self.time_debug("Initializing", time_started)
@@ -577,9 +581,10 @@ class OpenCVHandler:
                     window_image = black_frame.copy()
 
                 # Crop window image
-                self.window_image = window_image[
+                window_image = window_image[
                                     self.crop_top:window_image.shape[0] - self.crop_bottom,
                                     self.crop_left:window_image.shape[1] - self.crop_right]
+                self.window_image = window_image
 
                 self.time_debug("Screen captured", time_started)
 
@@ -925,9 +930,6 @@ class OpenCVHandler:
                             gpu_output_frame_hsv = cv2.cuda.cvtColor(gpu_output_frame, cv2.COLOR_BGR2HSV)
 
                             # Split HSV
-                            gpu_h = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
-                            gpu_s = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
-                            gpu_v = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
                             cv2.cuda.split(gpu_output_frame_hsv, [gpu_h, gpu_s, gpu_v])
 
                             # Add noise to darken areas
@@ -1022,7 +1024,7 @@ class OpenCVHandler:
                 self.real_fps = self.real_fps * 0.90 + current_fps * 0.10
 
                 # Update FPS
-                self.update_fps.emit("FPS: " + str(round(self.real_fps, 1)))
+                get_updater().call_latest(self.label_fps.setText, "FPS: " + str(round(self.real_fps, 1)))
 
                 self.time_debug("Cycle finished", time_started)
                 if TIME_DEBUG:
@@ -1109,7 +1111,7 @@ class OpenCVHandler:
                        3 * preview_resized.shape[1], QImage.Format_BGR888))
 
             # Push to preview
-            self.update_preview.emit(pixmap)
+            get_updater().call_latest(self.preview_label.setPixmap, pixmap)
 
             # Push to Flicker class
             self.flicker.set_frame(self.window_image)

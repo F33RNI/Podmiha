@@ -4,3 +4,4 @@
 /dist/
 /screenshot.png
 camera_calibration.yaml
+/qt_thread_updater/

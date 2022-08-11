@@ -544,10 +544,8 @@ class OpenCVHandler:
                 try:
                     if self.window_capture_allowed and self.hwnd is not None:
                         if self.window_capture_method == WINDOW_CAPTURE_OLD:
-                            # Don't update window image in fullscreen mode with old capture mode
-                            if not self.flicker.is_force_fullscreen_enabled():
-                                rect = win32gui.GetWindowPlacement(self.hwnd)[-1]
-                                window_image = cv2.cvtColor(np.array(ImageGrab.grab(rect)), cv2.COLOR_RGB2BGR)
+                            rect = win32gui.GetWindowPlacement(self.hwnd)[-1]
+                            window_image = cv2.cvtColor(np.array(ImageGrab.grab(rect)), cv2.COLOR_RGB2BGR)
                         elif self.window_capture_method == WINDOW_CAPTURE_QT:
                             # Get window image using PyQt5 grabWindow() function
                             window_image = qimage2ndarray. \
@@ -1114,7 +1112,9 @@ class OpenCVHandler:
             get_updater().call_latest(self.preview_label.setPixmap, pixmap)
 
             # Push to Flicker class
-            self.flicker.set_frame(self.window_image)
+            # Don't update window image in fullscreen mode with old capture mode
+            if not self.flicker.is_force_fullscreen_enabled():
+                self.flicker.set_frame(self.window_image)
 
             # Push to http server
             self.http_stream.set_frame(self.final_output_frame)

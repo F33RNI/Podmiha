@@ -8,12 +8,9 @@
 // @grant        none
 // ==/UserScript==
 
-// Set to true to automatically remove the following characters from text when copying
+// Set to true to automatically remove the following characters from teh start and end of the text when copying
 const REMOVE_CHARS = true;
-const CHARS_TO_REMOVE = ['?', '.', ':', '...', '-'];
-
-// Set to true automatically remove spaces before and after selected text
-const TRIM = true;
+const CHARS_TO_REMOVE = ['?', '.', ':', '…', '-'];
 
 // Page custom CSS Style to make selection transparent
 const HTML_STYLE = "<style> " +
@@ -91,21 +88,43 @@ const HTML_STYLE = "<style> " +
         }
     }, false);
 
+    /**
+     * Removes CHARS_TO_REMOVE from start and end of the string
+     * @param text string
+     */
+    function removeCharsFromEnds(text) {
+        // Trim text
+        text = text.trim();
+
+        let isFound = false;
+        if (REMOVE_CHARS) {
+            for (let i = 0; i < CHARS_TO_REMOVE.length; i++) {
+                // Remove from start
+                if (text.startsWith(CHARS_TO_REMOVE[i])) {
+                    text = text.substring(1);
+                    isFound = true;
+                }
+
+                // Remove from end
+                if (text.endsWith(CHARS_TO_REMOVE[i])) {
+                    text = text.substring(0, text.length - 1);
+                    isFound = true;
+                }
+            }
+        }
+        return { text, isFound };
+    }
+
 	/**
 	* Copies test to clipboard
 	*/
     function copyTextToClipboard(text) {
         // Remove chars
-        if (REMOVE_CHARS) {
-            for (let i = 0; i < CHARS_TO_REMOVE.length; i++) {
-                text = text.replaceAll(CHARS_TO_REMOVE[i], '');
-            }
+        let textCropped = removeCharsFromEnds(text)
+        while (textCropped.isFound) {
+            textCropped = removeCharsFromEnds(textCropped.text);
         }
-
-        // Trim
-        if (TRIM) {
-            text = text.trim();
-        }
+        text = textCropped.text;
 
         // Copy to clipboard
         if (!navigator.clipboard) {

@@ -53,7 +53,7 @@ import winguiauto
 # https://gstreamer.freedesktop.org/data/pkg/windows/1.20.3/msvc/gstreamer-1.0-msvc-x86_64-1.20.3.msi
 
 
-APP_VERSION = "1.6.5"
+APP_VERSION = "1.7.0"
 
 SETTINGS_FILE = "settings.json"
 
@@ -235,12 +235,6 @@ class Window(QMainWindow):
 
         # Open controller
         self.controller.open_controller()
-
-        # Start OpenCV thread
-        self.opencv_handler.start_opencv_thread()
-
-        # Start audio thread
-        self.audio_handler.start_main_thread()
 
         # Update preview mode
         self.change_preview_mode()
@@ -624,10 +618,16 @@ class Window(QMainWindow):
     def audio_open_close(self):
         # Open
         if not self.btn_audio_open_close.text() == "Close audio devices":
+            # Start audio thread
+            self.audio_handler.start_main_thread()
+
+            # Open devices
             if not self.audio_handler.is_input_device_opened():
                 self.audio_handler.open_input_device()
             if not self.audio_handler.is_output_device_opened():
                 self.audio_handler.open_output_device()
+
+            # Update GUI
             self.audio_input_device_name.setEnabled(False)
             self.audio_output_device_name.setEnabled(False)
             self.audio_sample_rate.setEnabled(False)
@@ -635,8 +635,14 @@ class Window(QMainWindow):
 
         # Close
         else:
+            # Close devices
             self.audio_handler.close_input_device()
             self.audio_handler.close_output_device()
+
+            # Stop audio thread
+            self.audio_handler.stop_main_thread()
+
+            # Update GUI
             self.audio_input_device_name.setEnabled(True)
             self.audio_output_device_name.setEnabled(True)
             self.audio_sample_rate.setEnabled(True)
@@ -711,6 +717,7 @@ class Window(QMainWindow):
         :return:
         """
         if self.camera_btn_mode_open:
+            # Update GUI
             self.camera_btn_mode_open = False
             self.camera_id.setEnabled(False)
             self.use_dshow.setEnabled(False)
@@ -718,8 +725,14 @@ class Window(QMainWindow):
             self.input_height.setEnabled(False)
             self.lock_input_resize.setEnabled(False)
             self.btn_open_camera.setText("Close camera")
+
+            # Start OpenCV thread
+            self.opencv_handler.start_opencv_thread()
+
+            # Open camera
             self.opencv_handler.open_camera()
         else:
+            # Update GUI
             self.camera_btn_mode_open = True
             self.opencv_handler.close_camera()
             self.camera_id.setEnabled(True)
@@ -728,6 +741,12 @@ class Window(QMainWindow):
             self.input_height.setEnabled(True)
             self.lock_input_resize.setEnabled(True)
             self.btn_open_camera.setText("Open camera")
+
+            # Close camera
+            self.opencv_handler.close_camera()
+
+            # Stop OpenCV thread
+            self.opencv_handler.stop_opencv_thread()
 
     def resize_input_width(self):
         if self.lock_input_resize.isChecked():
@@ -802,7 +821,7 @@ class Window(QMainWindow):
 
 if __name__ == "__main__":
     # Add cv2 directory
-    #sys.path.insert(0, "./cv2")
+    # sys.path.insert(0, "./cv2")
 
     # Replace icon in taskbar
     podmiha_app_ip = "f3rni.podmiha.podmiha." + APP_VERSION

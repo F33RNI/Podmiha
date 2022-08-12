@@ -331,6 +331,15 @@ class OpenCVHandler:
         thread.start()
         logging.info("OpenCV Thread: " + thread.getName())
 
+    def stop_opencv_thread(self):
+        """
+        Stops OpenCV loop thread
+        :return:
+        """
+        # Set flags
+        self.pause_output = True
+        self.opencv_thread_running = False
+
     def update_from_settings(self):
         # Retrieve settings
         self.input_camera_exposure = int(self.settings_handler.settings["input_camera_exposure"])
@@ -576,8 +585,8 @@ class OpenCVHandler:
 
                 # Crop window image
                 window_image = window_image[
-                                    self.crop_top:window_image.shape[0] - self.crop_bottom,
-                                    self.crop_left:window_image.shape[1] - self.crop_right]
+                               self.crop_top:window_image.shape[0] - self.crop_bottom,
+                               self.crop_left:window_image.shape[1] - self.crop_right]
                 self.window_image = window_image
 
                 self.time_debug("Screen captured", time_started)
@@ -685,12 +694,12 @@ class OpenCVHandler:
                 if self.fake_screen and self.fake_mode == FAKE_MODE_ARUCO:
                     if self.camera_matrix is not None and self.camera_distortions is not None:
                         corners, ids, _ = cv2.aruco.detectMarkers(image=gray_for_aruco, dictionary=self.aruco_dict,
-                                                              parameters=self.parameters,
-                                                              cameraMatrix=self.camera_matrix,
-                                                              distCoeff=self.camera_distortions)
+                                                                  parameters=self.parameters,
+                                                                  cameraMatrix=self.camera_matrix,
+                                                                  distCoeff=self.camera_distortions)
                     else:
                         corners, ids, _ = cv2.aruco.detectMarkers(gray_for_aruco, self.aruco_dict,
-                                                              parameters=self.parameters)
+                                                                  parameters=self.parameters)
 
                     # Get preview of first marker
                     if np.all(ids is not None):

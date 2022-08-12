@@ -241,6 +241,13 @@ class AudioHandler:
         thread.start()
         logging.info("Audio Thread: " + thread.getName())
 
+    def stop_main_thread(self):
+        """
+        Stops main thread
+        :return:
+        """
+        self.audio_thread_running = False
+
     def audio_thread(self):
         """
         Main loop

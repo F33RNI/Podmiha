@@ -503,6 +503,7 @@ class OpenCVHandler:
         noise_frame = np.zeros((1280, 720), dtype=np.uint8)
         cuda_enabled = False
         noise_stream = FileVideoStream(VIDEO_NOISE_FILE).start()
+        output_frame_paused = black_frame.copy()
 
         while self.opencv_thread_running:
             try:
@@ -974,10 +975,15 @@ class OpenCVHandler:
 
                     self.time_debug("Noise added", time_started)
 
+                # Real frame
+                if not error and not self.pause_output:
+                    output_frame_paused = output_frame.copy()
+
+                # Make final image
+                self.final_output_frame = output_frame_paused
+
                 # Output enabled
                 if not error and not self.pause_output:
-                    # Make final image
-                    self.final_output_frame = output_frame.copy()
                     # Set active state
                     self.controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)
                     self.serial_controller.update_state_camera(Controller.CAMERA_STATE_ACTIVE)

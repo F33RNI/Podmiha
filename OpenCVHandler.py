@@ -23,6 +23,7 @@ import logging
 import os
 import threading
 import time
+import traceback
 
 import cv2
 import numpy as np
@@ -526,6 +527,7 @@ class OpenCVHandler:
                     gpu_h = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
                     gpu_s = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
                     gpu_v = cv2.cuda_GpuMat(gpu_output_frame.size(), cv2.CV_8UC1)
+
                 cuda_enabled = cuda_enabled_new
 
                 self.time_debug("Initializing", time_started)
@@ -852,6 +854,14 @@ class OpenCVHandler:
 
                 self.time_debug("Markers processed", time_started)
 
+                # Real frame
+                if not self.pause_output:
+                    output_frame_paused = output_frame.copy()
+
+                # Paused -> use previous frame
+                else:
+                    output_frame = output_frame_paused.copy()
+
                 # Is frame totally black?
                 is_output_frame_black = cv2.countNonZero(cv2.cvtColor(output_frame, cv2.COLOR_BGR2GRAY)) == 0
 
@@ -933,12 +943,19 @@ class OpenCVHandler:
                             # Convert output frame to HSV
                             gpu_output_frame_hsv = cv2.cuda.cvtColor(gpu_output_frame, cv2.COLOR_BGR2HSV)
 
+                            # Resize GPU Mats
+                            if gpu_v.size() != gpu_output_frame_hsv.size():
+                                gpu_h = cv2.cuda_GpuMat(gpu_output_frame_hsv.size(), cv2.CV_8UC1)
+                                gpu_s = cv2.cuda_GpuMat(gpu_output_frame_hsv.size(), cv2.CV_8UC1)
+                                gpu_v = cv2.cuda_GpuMat(gpu_output_frame_hsv.size(), cv2.CV_8UC1)
+
                             # Split HSV
                             cv2.cuda.split(gpu_output_frame_hsv, [gpu_h, gpu_s, gpu_v])
 
                             # Add noise to darken areas
-                            gpu_v_noisy = cv2.cuda.bitwise_not(cv2.cuda.bitwise_and(
-                                cv2.cuda.bitwise_not(gpu_v), gpu_noise_frame))
+                            gpu_v_inverted = cv2.cuda.bitwise_not(gpu_v)
+                            gpu_v_noise_added = cv2.cuda.bitwise_and(gpu_v_inverted, gpu_noise_frame)
+                            gpu_v_noisy = cv2.cuda.bitwise_not(gpu_v_noise_added)
 
                             # Combine with clear output
                             gpu_v_noisy = cv2.cuda.addWeighted(gpu_v, 1. - self.output_noise_amount,
@@ -970,17 +987,15 @@ class OpenCVHandler:
 
                             # Convert back to BGR
                             output_frame = cv2.cvtColor(output_frame_hsv, cv2.COLOR_HSV2BGR)
-                    except:
+                    except Exception:
+                        traceback.print_exc()
                         pass
 
                     self.time_debug("Noise added", time_started)
 
-                # Real frame
-                if not error and not self.pause_output:
-                    output_frame_paused = output_frame.copy()
-
-                # Make final image
-                self.final_output_frame = output_frame_paused
+                # Make final frame
+                if not error:
+                    self.final_output_frame = output_frame.copy()
 
                 # Output enabled
                 if not error and not self.pause_output:
